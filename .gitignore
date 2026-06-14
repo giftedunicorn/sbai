@@ -28,3 +28,6 @@ Thumbs.db
 
 # Agent brainstorming artifacts
 .superpowers/
+
+# Local implementation worktrees
+.worktrees/
