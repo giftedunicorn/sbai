@@ -62,6 +62,10 @@ export function createAgentDoll(scene: Phaser.Scene, x: number, y: number): Agen
 
   const physicsBody = root.body as Phaser.Physics.Arcade.Body;
   physicsBody.setCollideWorldBounds(true, 0.8, 0.8);
+  physicsBody.setAllowGravity(false);
+  physicsBody.setDrag(320, 320);
+  physicsBody.setBounce(0.7, 0.7);
+  physicsBody.setMaxVelocity(620, 520);
   physicsBody.setSize(130, 220);
   physicsBody.setOffset(-65, -100);
 
