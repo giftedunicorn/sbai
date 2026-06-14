@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import './style.css';
+import { BOXING_GLOVE_CURSOR } from './game/cursor';
 import { StressSandboxScene } from './scenes/StressSandboxScene';
 
 const app = document.querySelector<HTMLDivElement>('#app');
@@ -7,6 +8,8 @@ const app = document.querySelector<HTMLDivElement>('#app');
 if (!app) {
   throw new Error('Missing #app mount node');
 }
+
+document.documentElement.style.setProperty('--boxing-glove-cursor', BOXING_GLOVE_CURSOR);
 
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,

@@ -8,11 +8,11 @@ export interface AgentParts {
 }
 
 const FACE_BY_EXPRESSION: Record<AgentExpression, string> = {
-  dazed: '@_@',
-  spinner: '◌_◌',
-  'blank-confidence': '0_0',
-  'fake-smile': '^_^',
-  panic: '!_!',
+  dazed: 'x  x',
+  spinner: '@  @',
+  'blank-confidence': '-  -',
+  'fake-smile': '^  ^',
+  panic: 'o  o',
 };
 
 export function createAgentDoll(scene: Phaser.Scene, x: number, y: number): AgentParts {
@@ -20,37 +20,85 @@ export function createAgentDoll(scene: Phaser.Scene, x: number, y: number): Agen
   const body = scene.add.graphics();
 
   body.lineStyle(6, 0x08090d, 1);
-  body.fillStyle(0x7c86ff, 1);
-  body.fillRoundedRect(-58, -8, 116, 118, 28);
-  body.strokeRoundedRect(-58, -8, 116, 118, 28);
 
-  body.fillStyle(0x9aa4ff, 1);
-  body.fillRoundedRect(-92, 0, 34, 92, 17);
-  body.strokeRoundedRect(-92, 0, 34, 92, 17);
-  body.fillRoundedRect(58, 0, 34, 92, 17);
-  body.strokeRoundedRect(58, 0, 34, 92, 17);
+  body.fillStyle(0xf1b884, 1);
+  body.fillEllipse(-61, -59, 20, 30);
+  body.strokeEllipse(-61, -59, 20, 30);
+  body.fillEllipse(61, -59, 20, 30);
+  body.strokeEllipse(61, -59, 20, 30);
 
-  body.fillStyle(0x606cff, 1);
-  body.fillRoundedRect(-44, 98, 36, 66, 18);
-  body.strokeRoundedRect(-44, 98, 36, 66, 18);
-  body.fillRoundedRect(8, 98, 36, 66, 18);
-  body.strokeRoundedRect(8, 98, 36, 66, 18);
+  body.fillStyle(0xf2c196, 1);
+  body.fillRoundedRect(-16, -18, 32, 28, 12);
+  body.strokeRoundedRect(-16, -18, 32, 28, 12);
 
-  body.fillStyle(0xf3f6ff, 1);
-  body.fillRoundedRect(-55, -88, 110, 78, 22);
-  body.strokeRoundedRect(-55, -88, 110, 78, 22);
+  body.fillStyle(0xf2c196, 1);
+  body.fillRoundedRect(-52, -108, 104, 92, 32);
+  body.strokeRoundedRect(-52, -108, 104, 92, 32);
+
+  body.fillStyle(0x2f221a, 1);
+  body.fillRoundedRect(-49, -115, 98, 38, 21);
+  body.strokeRoundedRect(-49, -115, 98, 38, 21);
+  body.fillTriangle(-50, -83, -28, -113, -8, -83);
+  body.fillTriangle(-20, -86, 4, -116, 24, -85);
+  body.fillTriangle(18, -86, 40, -111, 51, -84);
+
+  body.lineStyle(4, 0x08090d, 1);
+  body.beginPath();
+  body.moveTo(-5, -68);
+  body.lineTo(-12, -48);
+  body.lineTo(0, -45);
+  body.strokePath();
+  body.beginPath();
+  body.arc(0, -35, 12, Phaser.Math.DegToRad(15), Phaser.Math.DegToRad(165));
+  body.strokePath();
+
+  body.lineStyle(6, 0x08090d, 1);
+  body.fillStyle(0x364152, 1);
+  body.fillRoundedRect(-66, -2, 132, 120, 25);
+  body.strokeRoundedRect(-66, -2, 132, 120, 25);
+  body.lineStyle(4, 0x9fb0c8, 1);
+  body.beginPath();
+  body.moveTo(-23, 0);
+  body.lineTo(0, 26);
+  body.lineTo(23, 0);
+  body.strokePath();
+  body.lineStyle(5, 0x08090d, 1);
+
+  body.fillStyle(0x4f6280, 1);
+  body.fillRoundedRect(-98, 4, 34, 92, 17);
+  body.strokeRoundedRect(-98, 4, 34, 92, 17);
+  body.fillRoundedRect(64, 4, 34, 92, 17);
+  body.strokeRoundedRect(64, 4, 34, 92, 17);
+
+  body.fillStyle(0xf2c196, 1);
+  body.fillCircle(-81, 102, 17);
+  body.strokeCircle(-81, 102, 17);
+  body.fillCircle(81, 102, 17);
+  body.strokeCircle(81, 102, 17);
+
+  body.fillStyle(0x252a35, 1);
+  body.fillRoundedRect(-45, 105, 34, 64, 15);
+  body.strokeRoundedRect(-45, 105, 34, 64, 15);
+  body.fillRoundedRect(11, 105, 34, 64, 15);
+  body.strokeRoundedRect(11, 105, 34, 64, 15);
+
+  body.fillStyle(0x10131a, 1);
+  body.fillRoundedRect(-54, 157, 48, 18, 9);
+  body.strokeRoundedRect(-54, 157, 48, 18, 9);
+  body.fillRoundedRect(6, 157, 48, 18, 9);
+  body.strokeRoundedRect(6, 157, 48, 18, 9);
 
   body.lineStyle(5, 0xe8edff, 1);
-  body.strokeCircle(0, -122, 32);
-  body.lineStyle(5, 0x7c86ff, 1);
+  body.strokeCircle(0, -143, 30);
+  body.lineStyle(5, 0x9fb0c8, 1);
   body.beginPath();
-  body.arc(0, -122, 32, Phaser.Math.DegToRad(260), Phaser.Math.DegToRad(20));
+  body.arc(0, -143, 30, Phaser.Math.DegToRad(260), Phaser.Math.DegToRad(20));
   body.strokePath();
 
   const faceText = scene.add
-    .text(0, -49, FACE_BY_EXPRESSION['blank-confidence'], {
+    .text(0, -66, FACE_BY_EXPRESSION['blank-confidence'], {
       fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
-      fontSize: '22px',
+      fontSize: '20px',
       color: '#08090d',
       fontStyle: '900',
     })

@@ -7,9 +7,10 @@ import {
 } from '../src/game/content';
 
 describe('content pools', () => {
-  it('provides enough apology captions for repeat hits', () => {
+  it('provides enough English apology captions for repeat hits', () => {
     expect(APOLOGY_CAPTIONS.length).toBeGreaterThanOrEqual(8);
-    expect(APOLOGY_CAPTIONS).toContain('你说得对，我刚才确实没有充分理解你的意图。');
+    expect(APOLOGY_CAPTIONS).toContain('You are right. I misunderstood the task.');
+    expect(APOLOGY_CAPTIONS.every((caption) => !/[\u3400-\u9fff]/u.test(caption))).toBe(true);
   });
 
   it('provides short developer-specific mistake labels', () => {

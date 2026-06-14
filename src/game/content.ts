@@ -1,14 +1,14 @@
 import type { ParticleKind } from './types';
 
 export const APOLOGY_CAPTIONS = [
-  '你说得对，我刚才确实没有充分理解你的意图。',
-  '抱歉，这里是我没有完整读取上下文导致的。',
-  '我重新检查了一遍，这次会更严谨。',
-  '确实，我刚才的修改范围有点超出预期。',
-  '你提醒得很及时，我会避免再次出现类似问题。',
-  '我已经修复了这个问题。',
-  '这是我的疏忽，我应该先确认边界再动手。',
-  '我理解你的愤怒，这次我会更仔细地处理。',
+  'You are right. I misunderstood the task.',
+  'Sorry, I edited before reading the full context.',
+  'I checked again. This pass will be stricter.',
+  'You caught it. My change went outside the scope.',
+  'That was my miss. I should have confirmed the boundary first.',
+  'I fixed the issue and ran the checks this time.',
+  'I understand the frustration. I will handle this carefully.',
+  'I should not have touched your existing work without verifying it.',
 ] as const;
 
 export const MISTAKE_LABELS = [

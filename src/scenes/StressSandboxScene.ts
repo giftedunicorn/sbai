@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { createInitialAgentState, registerHit } from '../game/agentState';
+import { BOXING_GLOVE_CURSOR } from '../game/cursor';
 import { createHitEvent } from '../game/eventGenerator';
 import { createRandom } from '../game/random';
 import type { AgentState } from '../game/agentState';
@@ -20,6 +21,7 @@ export class StressSandboxScene extends Phaser.Scene {
   create(): void {
     const { width, height } = this.scale;
     this.physics.world.setBounds(0, 0, width, height);
+    this.input.setDefaultCursor(BOXING_GLOVE_CURSOR);
 
     this.addStage(width, height);
     this.agent = createAgentDoll(this, width / 2, height * 0.54);

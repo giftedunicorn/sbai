@@ -26,5 +26,10 @@ body {
 }
 
 canvas {
+  cursor: var(--boxing-glove-cursor, pointer);
   display: block;
+}
+
+#app {
+  cursor: var(--boxing-glove-cursor, pointer);
 }
