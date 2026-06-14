@@ -8,3 +8,20 @@ export type AgentExpression =
   | 'blank-confidence'
   | 'fake-smile'
   | 'panic';
+
+export interface Vector2 {
+  x: number;
+  y: number;
+}
+
+export interface HitEvent {
+  reaction: HitReaction;
+  expression: AgentExpression;
+  apology: string;
+  mistakeLabel: string;
+  impactWord: string;
+  particleKind: ParticleKind;
+  force: Vector2;
+  screenShake: number;
+  rare: boolean;
+}
