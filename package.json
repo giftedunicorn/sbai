@@ -2,11 +2,15 @@
   "name": "ganagent",
   "version": "0.1.0",
   "private": true,
+  "main": "dist-electron/electron/main.js",
   "description": "A lightweight parody AI coding agent stress-relief web game.",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc && vite build",
+    "dev": "npm run build && electron .",
+    "dev:web": "vite",
+    "build:web": "vite build",
+    "build:electron": "tsc -p tsconfig.electron.json",
+    "build": "tsc -p tsconfig.json && npm run build:web && npm run build:electron",
     "test": "vitest run",
     "test:watch": "vitest"
   },
@@ -14,6 +18,8 @@
     "phaser": "^3.90.0"
   },
   "devDependencies": {
+    "@types/node": "^24.0.0",
+    "electron": "^43.2.0",
     "typescript": "^5.8.3",
     "vite": "^6.3.5",
     "vitest": "^3.2.4",
