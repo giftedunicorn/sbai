@@ -91,7 +91,7 @@ The single Ubuntu job has display name `CI / test-and-build`, uses `actions/chec
 
 - [ ] **Step 2: Add monthly Dependabot checks**
 
-Configure npm updates for `/` on the first day of each month at 09:00 Asia/Shanghai time. Set `open-pull-requests-limit: 5`, group production and development dependencies separately, and label pull requests `dependencies`.
+Configure npm updates for `/` on the first day of each month at 09:00 Asia/Shanghai time. Set `open-pull-requests-limit: 5`, group only minor and patch updates by production or development scope, leave major updates separate, and label pull requests `dependencies`.
 
 - [ ] **Step 3: Validate and commit automation**
 

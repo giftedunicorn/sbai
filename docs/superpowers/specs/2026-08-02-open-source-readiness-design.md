@@ -30,7 +30,7 @@ Add focused community health files:
 
 `.github/workflows/ci.yml` runs on pushes to `main` and pull requests. It uses Node.js 24 LTS, `npm ci`, the 72-test suite, the production build, and a high-severity dependency audit. Workflow permissions are read-only, concurrent superseded runs are cancelled, and dependency caching uses `package-lock.json`.
 
-`.github/dependabot.yml` checks npm dependencies monthly with a limit of five open pull requests. GitHub Dependabot security updates remain enabled separately for urgent vulnerable dependencies.
+`.github/dependabot.yml` checks npm dependencies monthly with a limit of five open pull requests. Minor and patch updates are grouped by production or development scope; major updates stay separate for deliberate review. GitHub Dependabot security updates remain enabled separately for urgent vulnerable dependencies.
 
 No release, deployment, Steam, CodeQL, sponsorship, or publishing workflow is added in this phase.
 
