@@ -1,0 +1,36 @@
+name: Feature request
+description: Suggest a focused improvement that preserves the companion-only safety model.
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What user problem should this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Describe the smallest useful version.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Optional. What workarounds or smaller approaches did you consider?
+  - type: checkboxes
+    id: boundaries
+    attributes:
+      label: Safety boundaries
+      options:
+        - label: The proposal keeps transcript access read-only and user-approved.
+          required: true
+        - label: The proposal does not automatically control, interrupt, or message an agent.
+          required: true
+        - label: I removed transcript text, file paths, commands, credentials, and other private data.
+          required: true

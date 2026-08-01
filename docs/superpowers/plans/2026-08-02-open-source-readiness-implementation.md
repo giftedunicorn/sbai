@@ -55,7 +55,7 @@ Disable blank issues and link security reports to the private advisory page. Add
 Run:
 
 ```bash
-ruby -e 'require "yaml"; ARGV.each { |path| YAML.load_file(path, aliases: true); puts path }' .github/ISSUE_TEMPLATE/*.yml
+ruby -e 'require "yaml"; ARGV.each { |path| YAML.load_file(path); puts path }' .github/ISSUE_TEMPLATE/*.yml
 git diff --check
 ```
 
@@ -98,7 +98,7 @@ Configure npm updates for `/` on the first Monday of each month at 09:00 Asia/Sh
 Run:
 
 ```bash
-ruby -e 'require "yaml"; ARGV.each { |path| YAML.load_file(path, aliases: true); puts path }' .github/workflows/ci.yml .github/dependabot.yml
+ruby -e 'require "yaml"; ARGV.each { |path| YAML.load_file(path); puts path }' .github/workflows/ci.yml .github/dependabot.yml
 git diff --check
 ```
 
