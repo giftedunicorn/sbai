@@ -38,7 +38,7 @@ function createWindow(): BrowserWindow {
     resizable: false,
     backgroundColor: '#f4e7bd',
     webPreferences: {
-      preload: path.join(moduleDir, 'preload.js'),
+      preload: path.join(moduleDir, 'preload.cjs'),
       contextIsolation: true,
       sandbox: true,
       nodeIntegration: false,
