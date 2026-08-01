@@ -62,9 +62,9 @@ export class CompanionRuntime {
     this.stop();
     const generation = this.generation;
     this.root = root;
-    await this.tailer.setApprovedRoot(root);
+    const rootAvailable = await this.tailer.setApprovedRoot(root);
     if (generation !== this.generation || this.root !== root) return;
-    const paths = await this.discover(root);
+    const paths = rootAvailable ? await this.discover(root) : [];
     if (generation !== this.generation || this.root !== root) return;
 
     await this.tailer.prime(paths);
@@ -127,7 +127,9 @@ export class CompanionRuntime {
     const root = this.root;
     if (!root) return;
     const generation = this.generation;
-    const paths = await this.discover(root);
+    const rootAvailable = await this.tailer.setApprovedRoot(root);
+    if (generation !== this.generation || root !== this.root) return;
+    const paths = rootAvailable ? await this.discover(root) : [];
     if (generation !== this.generation || root !== this.root) return;
 
     const pathSet = new Set(paths);

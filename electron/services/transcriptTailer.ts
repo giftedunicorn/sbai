@@ -59,8 +59,15 @@ export class TranscriptTailer {
   private readonly resetPaths = new Set<string>();
   private approvedRealRoot: string | null = null;
 
-  async setApprovedRoot(root: string): Promise<void> {
-    this.approvedRealRoot = await realpath(root);
+  async setApprovedRoot(root: string): Promise<boolean> {
+    try {
+      this.approvedRealRoot = await realpath(root);
+      return true;
+    } catch (error) {
+      if (!isMissing(error)) throw error;
+      this.approvedRealRoot = null;
+      return false;
+    }
   }
 
   async prime(paths: string[]): Promise<void> {

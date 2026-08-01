@@ -62,6 +62,21 @@ afterEach(async () => {
 });
 
 describe('CompanionRuntime', () => {
+  it('starts safely with an unavailable persisted root', async () => {
+    const missingRoot = join(root, 'deleted-approved-root');
+    const snapshots: CompanionSnapshot[] = [];
+    const runtime = new CompanionRuntime({
+      intervalMs: 0,
+      processPresent: async () => false,
+      onSnapshot: (snapshot) => snapshots.push(snapshot),
+      onCatharsis: () => undefined,
+    });
+
+    await expect(runtime.start(missingRoot)).resolves.toBeUndefined();
+    expect(snapshots.at(-1)?.sessions).toEqual([]);
+    runtime.stop();
+  });
+
   it('orchestrates isolated read-only automatic and manual catharsis', async () => {
     await writeFile(
       transcriptOne,
