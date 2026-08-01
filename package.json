@@ -41,7 +41,7 @@
   "devDependencies": {
     "@types/node": "^24.0.0",
     "electron": "^43.2.0",
-    "typescript": "^5.8.3",
+    "typescript": "^7.0.2",
     "vite": "^6.3.5",
     "vitest": "^3.2.4",
     "jsdom": "^26.1.0"
