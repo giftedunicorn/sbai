@@ -24,9 +24,9 @@ function projectLabel(cwd: string): string {
   return basename(cwd) || cwd || 'Unknown project';
 }
 
-function sessionLabel(sessionId: string): string {
-  const shortId = sessionId.slice(0, 8).trim();
-  return shortId ? `Claude ${shortId}` : 'Claude Agent';
+function sessionLabel(targetId: string): string {
+  const number = targetId.replace(/^agent-/, '');
+  return `Claude #${number}`;
 }
 
 export class SessionRegistry {
@@ -56,7 +56,7 @@ export class SessionRegistry {
       entry = {
         path,
         id: targetId,
-        label: sessionLabel(record.sessionId),
+        label: sessionLabel(targetId),
         projectLabel: projectLabel(record.cwd),
         lastActivityAt: record.timestamp,
         ended: false,

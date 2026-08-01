@@ -44,7 +44,7 @@ describe('SessionRegistry', () => {
 
     expect(registry.getSession(firstId)).toMatchObject({
       id: firstId,
-      label: 'Claude session-',
+      label: 'Claude #1',
       projectLabel: 'same-project',
       status: 'active',
     });
