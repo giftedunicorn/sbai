@@ -14,7 +14,7 @@ describe('RoastEngine', () => {
     const engine = new RoastEngine();
     const testRoast = engine.create({
       intensity: 'angry',
-      evidence: [observed('test-failure', 'npm test — 2 tests failed')],
+      evidence: [observed('test-failure', 'npm test - 2 tests failed')],
     }).roast;
     const fileRoast = engine.create({
       intensity: 'angry',

@@ -62,9 +62,9 @@ export function extractEvidence(
     const testCommand = commandFrom(toolUse);
     const resultText = boundedText(record.text);
     if (testCommand) {
-      add('test-failure', `${testCommand} — ${resultText}`);
+      add('test-failure', `${testCommand} - ${resultText}`);
     } else {
-      add('tool-failure', `${boundedText(toolUse.toolName)} — ${resultText}`);
+      add('tool-failure', `${boundedText(toolUse.toolName)} - ${resultText}`);
     }
   }
 

@@ -1,12 +1,46 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'"
+    />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AI Agent Stress Sandbox</title>
+    <title>嘴替.EXE</title>
   </head>
   <body>
-    <main id="app" aria-label="AI Agent Stress Sandbox"></main>
+    <main id="app" class="retro-window" aria-label="AI Agent 出气伴侣">
+      <header class="titlebar">
+        <span class="titlebar__face" aria-hidden="true">ಠ‿ಠ</span>
+        <span class="titlebar__title">嘴替.EXE</span>
+        <button id="close-button" class="window-button" type="button" aria-label="关闭">
+          ×
+        </button>
+      </header>
+
+      <section class="statusbar" aria-label="本地连接状态">
+        <span id="connection-status">LOCAL ONLY</span>
+        <div class="statusbar__actions">
+          <button id="approve-button" class="text-button" type="button">目录</button>
+          <button id="pause-button" class="text-button" type="button">暂停</button>
+        </div>
+      </section>
+
+      <nav id="session-list" class="session-list" aria-label="可见 Agents"></nav>
+
+      <section id="game" class="game-stage" aria-label="Agent 出气舞台"></section>
+
+      <footer class="controls">
+        <button id="roast-button" class="pixel-button pixel-button--primary" type="button">
+          替我骂它
+        </button>
+        <button id="copy-button" class="pixel-button" type="button" disabled>
+          复制回话
+        </button>
+        <button id="mute-button" class="text-button" type="button">静音</button>
+      </footer>
+    </main>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

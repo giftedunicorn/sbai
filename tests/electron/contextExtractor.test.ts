@@ -31,7 +31,7 @@ describe('extractEvidence', () => {
     ).toEqual([
       {
         kind: 'test-failure',
-        value: 'npm test — 2 tests failed',
+        value: 'npm test - 2 tests failed',
         confidence: 'observed',
       },
     ]);
@@ -46,7 +46,7 @@ describe('extractEvidence', () => {
         toolUse('t3', 'Write', { path: '/tmp/new.ts' }),
       ]),
     ).toEqual([
-      { kind: 'tool-failure', value: 'Read — ENOENT', confidence: 'observed' },
+      { kind: 'tool-failure', value: 'Read - ENOENT', confidence: 'observed' },
       { kind: 'file-edit', value: '/tmp/app.ts', confidence: 'observed' },
       { kind: 'file-edit', value: '/tmp/new.ts', confidence: 'observed' },
     ]);
