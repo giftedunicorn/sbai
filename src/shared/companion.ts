@@ -26,6 +26,7 @@ export interface SessionSummary {
 
 export interface CompanionSnapshot {
   paused: boolean;
+  muted: boolean;
   claudeProcessPresent: boolean;
   sessions: SessionSummary[];
 }
@@ -115,6 +116,7 @@ export function isCompanionSnapshot(value: unknown): value is CompanionSnapshot 
   return (
     isRecord(value) &&
     typeof value.paused === 'boolean' &&
+    typeof value.muted === 'boolean' &&
     typeof value.claudeProcessPresent === 'boolean' &&
     Array.isArray(value.sessions) &&
     value.sessions.every(isSessionSummary)

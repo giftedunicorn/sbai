@@ -13,6 +13,7 @@ describe('detectOwnerAnger', () => {
     ['代码示例里包含“傻逼”这个词', null],
     ['请翻译：why is this agent so stupid?', null],
     ['我同事怎么又把分支搞坏了', null],
+    ['你看我同事这个傻逼又把分支搞坏了', null],
     ['你怎么又没跑测试？', 'annoyed'],
     ['谁让你乱改二十个文件的？', 'angry'],
     ['你他妈又删我代码，真是个傻逼', 'furious'],

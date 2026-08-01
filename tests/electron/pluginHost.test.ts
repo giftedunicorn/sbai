@@ -14,9 +14,11 @@ const evidence: Evidence[] = [
 describe('createRoastWithFallback', () => {
   it('gives a provider only intensity and bounded evidence', async () => {
     const calls: unknown[] = [];
+    let signal: AbortSignal | undefined;
     const provider: MouthpieceProvider = {
-      async generate(input) {
+      async generate(input, context) {
         calls.push(input);
+        signal = context.signal;
         return '外部嘴替只返回这一句';
       },
     };
@@ -27,10 +29,22 @@ describe('createRoastWithFallback', () => {
       new RoastEngine(),
     );
 
-    expect(calls).toEqual([{ intensity: 'angry', evidence }]);
+    expect(calls).toEqual([
+      {
+        intensity: 'angry',
+        evidence: [
+          {
+            kind: 'test-failure',
+            value: 'Observed test failure',
+            confidence: 'observed',
+          },
+        ],
+      },
+    ]);
     expect(Object.keys(calls[0] as object).sort()).toEqual(['evidence', 'intensity']);
     expect(result.roast).toBe('外部嘴替只返回这一句');
     expect(result.animation).toBe('slap-combo');
+    expect(signal?.aborted).toBe(false);
   });
 
   it.each([
@@ -49,8 +63,12 @@ describe('createRoastWithFallback', () => {
   });
 
   it('uses fallback when the provider times out', async () => {
+    let signal: AbortSignal | undefined;
     const provider: MouthpieceProvider = {
-      generate: () => new Promise(() => undefined),
+      generate: (_input, context) => {
+        signal = context.signal;
+        return new Promise(() => undefined);
+      },
     };
 
     const result = await createRoastWithFallback(
@@ -62,5 +80,6 @@ describe('createRoastWithFallback', () => {
 
     expect(result.roast.trim().length).toBeGreaterThan(0);
     expect(result.animation).toBe('token-explosion');
+    expect(signal?.aborted).toBe(true);
   });
 });

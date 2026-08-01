@@ -76,6 +76,16 @@ function intensityForScore(score: number): AngerIntensity {
   return 'annoyed';
 }
 
+function hasUnambiguousAgentAccusation(text: string): boolean {
+  const accusation = '(?:乱改|删|搞坏|弄坏|没跑|擅自|骗人|胡说|傻逼|废物|垃圾|蠢)';
+  const namedAgent = new RegExp(`(?:claude|agent).{0,18}${accusation}`, 'i');
+  const secondPerson = new RegExp(
+    `(?:谁让你|你(?:他妈)?(?:又|怎么|为什么|凭什么|敢|还|真|太|乱|删|改|搞|弄|没|不)).{0,18}${accusation}?`,
+    'i',
+  );
+  return namedAgent.test(text) || secondPerson.test(text);
+}
+
 export function detectOwnerAnger(text: string): RageDetection | null {
   if (REJECTED_REQUEST_MARKERS.some((pattern) => pattern.test(text))) return null;
 
@@ -83,7 +93,10 @@ export function detectOwnerAnger(text: string): RageDetection | null {
   if (!normalized) return null;
 
   const directlyAddressesAgent = includesAny(normalized, DIRECT_ADDRESS_TERMS);
-  if (includesAny(normalized, THIRD_PARTY_TERMS) && !directlyAddressesAgent) {
+  if (
+    includesAny(normalized, THIRD_PARTY_TERMS) &&
+    !hasUnambiguousAgentAccusation(normalized)
+  ) {
     return null;
   }
 

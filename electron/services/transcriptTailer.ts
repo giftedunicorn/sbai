@@ -1,4 +1,6 @@
-import { open, stat } from 'node:fs/promises';
+import { constants } from 'node:fs';
+import { open, realpath, stat } from 'node:fs/promises';
+import { isAbsolute, relative } from 'node:path';
 
 export interface AppendedLine {
   path: string;
@@ -8,6 +10,8 @@ export interface AppendedLine {
 interface TailState {
   offset: number;
   pending: Buffer;
+  device: number;
+  inode: number;
 }
 
 const MAX_BYTES_PER_POLL = 1024 * 1024;
@@ -17,7 +21,18 @@ function isMissing(error: unknown): boolean {
     typeof error === 'object' &&
     error !== null &&
     'code' in error &&
-    (error.code === 'ENOENT' || error.code === 'EACCES' || error.code === 'EPERM')
+    (error.code === 'ENOENT' ||
+      error.code === 'EACCES' ||
+      error.code === 'EPERM' ||
+      error.code === 'ELOOP')
+  );
+}
+
+function isInsideRoot(root: string, candidate: string): boolean {
+  const pathFromRoot = relative(root, candidate);
+  return (
+    pathFromRoot === '' ||
+    (!pathFromRoot.startsWith('..') && !isAbsolute(pathFromRoot))
   );
 }
 
@@ -41,17 +56,31 @@ function completeLines(path: string, bytes: Buffer, state: TailState): AppendedL
 
 export class TranscriptTailer {
   private readonly states = new Map<string, TailState>();
+  private readonly resetPaths = new Set<string>();
+  private approvedRealRoot: string | null = null;
+
+  async setApprovedRoot(root: string): Promise<void> {
+    this.approvedRealRoot = await realpath(root);
+  }
 
   async prime(paths: string[]): Promise<void> {
     for (const path of [...new Set(paths)].sort()) {
       if (this.states.has(path)) continue;
+      let opened;
       try {
-        const info = await stat(path);
-        if (info.isFile()) {
-          this.states.set(path, { offset: info.size, pending: Buffer.alloc(0) });
-        }
+        opened = await this.openVerified(path);
+        if (!opened) continue;
+        const { info } = opened;
+        this.states.set(path, {
+          offset: info.size,
+          pending: Buffer.alloc(0),
+          device: info.dev,
+          inode: info.ino,
+        });
       } catch (error) {
         if (!isMissing(error)) throw error;
+      } finally {
+        await opened?.handle.close();
       }
     }
   }
@@ -61,20 +90,32 @@ export class TranscriptTailer {
 
     for (const path of [...new Set(paths)].sort()) {
       let state = this.states.get(path);
-      if (!state) {
-        state = { offset: 0, pending: Buffer.alloc(0) };
-        this.states.set(path, state);
-      }
-
-      let handle;
+      let opened;
       try {
-        handle = await open(path, 'r');
-        const info = await handle.stat();
-        if (!info.isFile()) continue;
+        opened = await this.openVerified(path);
+        if (!opened) continue;
+        const { handle, info } = opened;
 
-        if (info.size < state.offset) {
+        if (!state) {
+          state = {
+            offset: 0,
+            pending: Buffer.alloc(0),
+            device: info.dev,
+            inode: info.ino,
+          };
+          this.states.set(path, state);
+        }
+
+        if (
+          state.device !== info.dev ||
+          state.inode !== info.ino ||
+          info.size < state.offset
+        ) {
           state.offset = 0;
           state.pending = Buffer.alloc(0);
+          state.device = info.dev;
+          state.inode = info.ino;
+          this.resetPaths.add(path);
         }
 
         const available = info.size - state.offset;
@@ -89,7 +130,7 @@ export class TranscriptTailer {
       } catch (error) {
         if (!isMissing(error)) throw error;
       } finally {
-        await handle?.close();
+        await opened?.handle.close();
       }
     }
 
@@ -98,9 +139,54 @@ export class TranscriptTailer {
 
   forget(path: string): void {
     this.states.delete(path);
+    this.resetPaths.delete(path);
+  }
+
+  takeResetPaths(): string[] {
+    const paths = [...this.resetPaths].sort();
+    this.resetPaths.clear();
+    return paths;
   }
 
   clear(): void {
     this.states.clear();
+    this.resetPaths.clear();
+    this.approvedRealRoot = null;
+  }
+
+  private async openVerified(path: string) {
+    const canonicalBefore = await realpath(path);
+    if (
+      this.approvedRealRoot &&
+      !isInsideRoot(this.approvedRealRoot, canonicalBefore)
+    ) {
+      return null;
+    }
+
+    const noFollow = constants.O_NOFOLLOW ?? 0;
+    const handle = await open(path, constants.O_RDONLY | noFollow);
+    try {
+      const info = await handle.stat();
+      if (!info.isFile()) {
+        await handle.close();
+        return null;
+      }
+
+      const [canonicalAfter, pathInfo] = await Promise.all([
+        realpath(path),
+        stat(path),
+      ]);
+      const sameOpenedFile = pathInfo.dev === info.dev && pathInfo.ino === info.ino;
+      const remainsInside =
+        !this.approvedRealRoot || isInsideRoot(this.approvedRealRoot, canonicalAfter);
+      if (!sameOpenedFile || !remainsInside || canonicalAfter !== canonicalBefore) {
+        await handle.close();
+        return null;
+      }
+      return { handle, info };
+    } catch (error) {
+      await handle.close();
+      throw error;
+    }
   }
 }

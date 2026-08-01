@@ -5,7 +5,7 @@ export interface MouthpieceProvider {
   generate(input: {
     intensity: AngerIntensity;
     evidence: Evidence[];
-  }): Promise<string>;
+  }, context: { signal: AbortSignal }): Promise<string>;
 }
 
 type RoastInput = {
@@ -13,17 +13,36 @@ type RoastInput = {
   evidence: Evidence[];
 };
 
-async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+const PROVIDER_EVIDENCE_SUMMARY: Record<Evidence['kind'], string> = {
+  'test-failure': 'Observed test failure',
+  'tool-failure': 'Observed tool failure',
+  'file-edit': 'Observed file edit',
+};
+
+async function withTimeout<T>(
+  operation: (signal: AbortSignal) => Promise<T>,
+  timeoutMs: number,
+  externalSignal?: AbortSignal,
+): Promise<T> {
+  const controller = new AbortController();
   let timer: ReturnType<typeof setTimeout> | undefined;
+  const abortFromExternal = () => controller.abort(externalSignal?.reason);
+  if (externalSignal?.aborted) abortFromExternal();
+  else externalSignal?.addEventListener('abort', abortFromExternal, { once: true });
+
   try {
+    timer = setTimeout(() => controller.abort(new Error('provider timeout')), timeoutMs);
     return await Promise.race([
-      promise,
+      Promise.resolve().then(() => operation(controller.signal)),
       new Promise<T>((_resolve, reject) => {
-        timer = setTimeout(() => reject(new Error('provider timeout')), timeoutMs);
+        const rejectOnAbort = () => reject(controller.signal.reason);
+        if (controller.signal.aborted) rejectOnAbort();
+        else controller.signal.addEventListener('abort', rejectOnAbort, { once: true });
       }),
     ]);
   } finally {
     if (timer) clearTimeout(timer);
+    externalSignal?.removeEventListener('abort', abortFromExternal);
   }
 }
 
@@ -32,19 +51,25 @@ export async function createRoastWithFallback(
   input: RoastInput,
   fallback: RoastEngine,
   timeoutMs = 1_500,
+  signal?: AbortSignal,
 ): Promise<ReturnType<RoastEngine['create']>> {
   const fallbackResult = fallback.create(input);
   if (!provider) return fallbackResult;
 
   const providerInput: RoastInput = {
     intensity: input.intensity,
-    evidence: input.evidence.slice(0, 5).map((item) => ({ ...item })),
+    evidence: input.evidence.slice(0, 5).map((item) => ({
+      kind: item.kind,
+      value: PROVIDER_EVIDENCE_SUMMARY[item.kind],
+      confidence: 'observed',
+    })),
   };
 
   try {
     const generated = await withTimeout(
-      Promise.resolve().then(() => provider.generate(providerInput)),
+      (providerSignal) => provider.generate(providerInput, { signal: providerSignal }),
       timeoutMs,
+      signal,
     );
     const roast = generated.trim();
     if (!roast) return fallbackResult;

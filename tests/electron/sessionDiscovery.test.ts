@@ -1,4 +1,4 @@
-import { mkdtemp, mkdir, rm, symlink, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, realpath, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
@@ -28,10 +28,11 @@ describe('discoverTranscriptFiles', () => {
     await writeFile(join(root, 'project', 'notes.txt'), '');
     await writeFile(join(root, 'project', 'nested', 'a.jsonl'), '');
 
+    const canonicalRoot = await realpath(root);
     expect(await discoverTranscriptFiles(root)).toEqual(
       [
-        resolve(root, 'project', 'nested', 'a.jsonl'),
-        resolve(root, 'project', 'z.jsonl'),
+        resolve(canonicalRoot, 'project', 'nested', 'a.jsonl'),
+        resolve(canonicalRoot, 'project', 'z.jsonl'),
       ].sort(),
     );
   });

@@ -82,7 +82,9 @@ describe('read-only companion flow', () => {
     const originalBytes = await readFile(transcriptPath);
 
     await runtime.tick();
-    await runtime.manualRoast('private-session');
+    const targetId = snapshots.at(-1)?.sessions[0]?.id;
+    expect(targetId).toBe('agent-1');
+    await runtime.manualRoast(targetId!);
 
     expect(await readFile(transcriptPath)).toEqual(originalBytes);
     expect(network).not.toHaveBeenCalled();
@@ -110,7 +112,7 @@ describe('read-only companion flow', () => {
     runtime.stop();
     runtime.setPaused(false);
     expect(snapshots.at(-1)?.sessions).toEqual([]);
-    await runtime.manualRoast('private-session');
+    await runtime.manualRoast(targetId!);
     expect(catharsisEvents).toHaveLength(2);
   });
 });

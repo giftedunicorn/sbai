@@ -1,4 +1,4 @@
-import { readdir } from 'node:fs/promises';
+import { readdir, realpath } from 'node:fs/promises';
 import { isAbsolute, relative, resolve } from 'node:path';
 
 function isInsideRoot(root: string, candidate: string): boolean {
@@ -15,15 +15,28 @@ function isSkippable(error: unknown): boolean {
 }
 
 export async function discoverTranscriptFiles(root: string): Promise<string[]> {
-  const approvedRoot = resolve(root);
+  let approvedRoot: string;
+  try {
+    approvedRoot = await realpath(resolve(root));
+  } catch (error) {
+    if (isSkippable(error)) return [];
+    throw error;
+  }
   const discovered: string[] = [];
 
   async function walk(directory: string): Promise<void> {
-    if (!isInsideRoot(approvedRoot, directory)) return;
+    let canonicalDirectory: string;
+    try {
+      canonicalDirectory = await realpath(directory);
+    } catch (error) {
+      if (isSkippable(error)) return;
+      throw error;
+    }
+    if (!isInsideRoot(approvedRoot, canonicalDirectory)) return;
 
     let entries;
     try {
-      entries = await readdir(directory, { withFileTypes: true });
+      entries = await readdir(canonicalDirectory, { withFileTypes: true });
     } catch (error) {
       if (isSkippable(error)) return;
       throw error;
@@ -31,13 +44,17 @@ export async function discoverTranscriptFiles(root: string): Promise<string[]> {
 
     for (const entry of entries) {
       if (entry.isSymbolicLink()) continue;
-      const candidate = resolve(directory, entry.name);
-      if (!isInsideRoot(approvedRoot, candidate)) continue;
+      const candidate = resolve(canonicalDirectory, entry.name);
 
       if (entry.isDirectory()) {
         await walk(candidate);
       } else if (entry.isFile() && entry.name.endsWith('.jsonl')) {
-        discovered.push(candidate);
+        try {
+          const canonicalFile = await realpath(candidate);
+          if (isInsideRoot(approvedRoot, canonicalFile)) discovered.push(canonicalFile);
+        } catch (error) {
+          if (!isSkippable(error)) throw error;
+        }
       }
     }
   }

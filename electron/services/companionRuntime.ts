@@ -39,10 +39,12 @@ export class CompanionRuntime {
   private root: string | null = null;
   private knownPaths = new Set<string>();
   private paused = false;
+  private muted = false;
   private lastProcessPresent = false;
   private interval: ReturnType<typeof setInterval> | undefined;
   private activeTick: Promise<void> | null = null;
   private generation = 0;
+  private readonly pendingCatharsis = new Set<AbortController>();
 
   constructor(options: CompanionRuntimeOptions) {
     this.intervalMs = options.intervalMs ?? 750;
@@ -60,6 +62,8 @@ export class CompanionRuntime {
     this.stop();
     const generation = this.generation;
     this.root = root;
+    await this.tailer.setApprovedRoot(root);
+    if (generation !== this.generation || this.root !== root) return;
     const paths = await this.discover(root);
     if (generation !== this.generation || this.root !== root) return;
 
@@ -71,7 +75,9 @@ export class CompanionRuntime {
     this.emitSnapshot();
 
     if (this.intervalMs > 0) {
-      this.interval = setInterval(() => void this.tick(), this.intervalMs);
+      this.interval = setInterval(() => {
+        void this.tick().catch(() => undefined);
+      }, this.intervalMs);
     }
   }
 
@@ -88,6 +94,8 @@ export class CompanionRuntime {
 
   stop(): void {
     this.generation += 1;
+    for (const controller of this.pendingCatharsis) controller.abort();
+    this.pendingCatharsis.clear();
     if (this.interval) clearInterval(this.interval);
     this.interval = undefined;
     this.root = null;
@@ -99,6 +107,11 @@ export class CompanionRuntime {
 
   setPaused(paused: boolean): void {
     this.paused = paused;
+    this.emitSnapshot();
+  }
+
+  setMuted(muted: boolean): void {
+    this.muted = muted;
     this.emitSnapshot();
   }
 
@@ -126,16 +139,19 @@ export class CompanionRuntime {
 
     const appended = await this.tailer.poll(paths);
     if (generation !== this.generation || root !== this.root) return;
+    for (const resetPath of this.tailer.takeResetPaths()) {
+      this.registry.markEndedByPath(resetPath);
+    }
     this.knownPaths = pathSet;
 
     for (const item of appended) {
       const record = parseTranscriptLine(item.line);
       if (!record) continue;
-      this.registry.ingest(item.path, record);
+      const targetId = this.registry.ingest(item.path, record);
       if (this.paused) continue;
       const detection = detectAutomaticAnger(record);
       if (detection) {
-        await this.emitCatharsis(record.sessionId, 'owner-anger', detection.intensity);
+        await this.emitCatharsis(targetId, 'owner-anger', detection.intensity);
       }
     }
 
@@ -149,16 +165,38 @@ export class CompanionRuntime {
     trigger: TriggerKind,
     intensity: CatharsisEvent['intensity'],
   ): Promise<void> {
+    const generation = this.generation;
+    const controller = new AbortController();
+    this.pendingCatharsis.add(controller);
     const evidence = extractEvidence(this.registry.getRecent(sessionId));
-    const generated = await createRoastWithFallback(
-      this.provider,
-      { intensity, evidence },
-      this.roastEngine,
-    );
+    let generated;
+    try {
+      generated = await createRoastWithFallback(
+        this.provider,
+        { intensity, evidence },
+        this.roastEngine,
+        1_500,
+        controller.signal,
+      );
+    } finally {
+      this.pendingCatharsis.delete(controller);
+    }
+    const session = this.registry.getSession(sessionId);
+    if (
+      controller.signal.aborted ||
+      generation !== this.generation ||
+      !session ||
+      session.status === 'ended' ||
+      session.status === 'content-unavailable'
+    ) {
+      return;
+    }
     this.onCatharsis({ sessionId, trigger, intensity, evidence, ...generated });
   }
 
   private emitSnapshot(): void {
-    this.onSnapshot(this.registry.snapshot(this.paused, this.lastProcessPresent));
+    this.onSnapshot(
+      this.registry.snapshot(this.paused, this.lastProcessPresent, this.muted),
+    );
   }
 }

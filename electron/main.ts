@@ -7,7 +7,7 @@ import {
   type IpcMainEvent,
   type IpcMainInvokeEvent,
 } from 'electron';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
 
 import { IPC, type CompanionSnapshot } from '../src/shared/companion.js';
@@ -19,6 +19,8 @@ import {
 } from './services/settingsStore.js';
 
 const moduleDir = path.dirname(fileURLToPath(import.meta.url));
+const rendererPath = path.join(moduleDir, '../../dist/index.html');
+const trustedRendererUrl = pathToFileURL(rendererPath).href;
 let mainWindow: BrowserWindow | null = null;
 let runtime: CompanionRuntime | null = null;
 let settingsStore: SettingsStore | null = null;
@@ -48,7 +50,14 @@ function createWindow(): BrowserWindow {
   window.webContents.on('did-finish-load', () => {
     if (latestSnapshot) window.webContents.send(IPC.snapshot, latestSnapshot);
   });
-  void window.loadFile(path.join(moduleDir, '../../dist/index.html'));
+  window.webContents.on('will-navigate', (event, url) => {
+    if (url !== trustedRendererUrl) event.preventDefault();
+  });
+  window.webContents.on('will-redirect', (event, url) => {
+    if (url !== trustedRendererUrl) event.preventDefault();
+  });
+  window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+  void window.loadFile(rendererPath);
   window.on('closed', () => {
     if (mainWindow === window) mainWindow = null;
   });
@@ -56,7 +65,13 @@ function createWindow(): BrowserWindow {
 }
 
 function isTrustedSender(event: IpcMainEvent | IpcMainInvokeEvent): boolean {
-  return Boolean(mainWindow && !mainWindow.isDestroyed() && event.sender === mainWindow.webContents);
+  return Boolean(
+    mainWindow &&
+      !mainWindow.isDestroyed() &&
+      event.sender === mainWindow.webContents &&
+      event.senderFrame === mainWindow.webContents.mainFrame &&
+      event.senderFrame.url === trustedRendererUrl,
+  );
 }
 
 function sendToRenderer(channel: string, value: unknown): void {
@@ -95,6 +110,8 @@ function registerIpc(): void {
   ipcMain.on(IPC.setMuted, (event, muted: unknown) => {
     if (!isTrustedSender(event) || typeof muted !== 'boolean' || !settings) return;
     settings.muted = muted;
+    runtime?.setMuted(muted);
+    mainWindow?.webContents.setAudioMuted(muted);
     persistSettings();
   });
 
@@ -134,6 +151,8 @@ async function initialize(): Promise<void> {
     },
   });
   runtime.setPaused(settings.paused);
+  runtime.setMuted(settings.muted);
+  mainWindow.webContents.setAudioMuted(settings.muted);
   registerIpc();
 
   if (settings.approvedClaudeRoot) {

@@ -42,6 +42,7 @@ describe('companion contracts', () => {
     expect(
       isCompanionSnapshot({
         paused: false,
+        muted: false,
         claudeProcessPresent: true,
         sessions: [
           {
@@ -54,6 +55,14 @@ describe('companion contracts', () => {
         ],
       }),
     ).toBe(true);
+
+    expect(
+      isCompanionSnapshot({
+        paused: false,
+        claudeProcessPresent: true,
+        sessions: [],
+      }),
+    ).toBe(false);
 
     expect(
       isCompanionSnapshot({

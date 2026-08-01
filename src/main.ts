@@ -49,13 +49,13 @@ const demoSessions: SessionSummary[] = [
 
 let snapshot: CompanionSnapshot = {
   paused: false,
+  muted: false,
   claudeProcessPresent: false,
   sessions: window.companion ? [] : demoSessions,
 };
 let selectedId: string | null = snapshot.sessions[0]?.id ?? null;
 let alertSessionId: string | null = null;
 let lastCopyText = '';
-let muted = false;
 
 const game = new Phaser.Game({
   type: Phaser.AUTO,
@@ -110,8 +110,8 @@ function render(): void {
       : 'WEB DEMO / OFFLINE';
   pauseButton.textContent = snapshot.paused ? '继续' : '暂停';
   pauseButton.setAttribute('aria-pressed', String(snapshot.paused));
-  muteButton.textContent = muted ? '开声' : '静音';
-  muteButton.setAttribute('aria-pressed', String(muted));
+  muteButton.textContent = snapshot.muted ? '开声' : '静音';
+  muteButton.setAttribute('aria-pressed', String(snapshot.muted));
   approveButton.textContent = window.companion ? '目录' : '演示';
   approveButton.disabled = !window.companion;
   copyButton.disabled = lastCopyText.length === 0;
@@ -146,6 +146,7 @@ if (window.companion) {
   unsubscribers.push(
     window.companion.onSnapshot((nextSnapshot) => {
       snapshot = nextSnapshot;
+      game.sound.mute = snapshot.muted;
       render();
     }),
     window.companion.onCatharsis(handleCatharsis),
@@ -169,9 +170,9 @@ pauseButton.addEventListener('click', () => {
   render();
 });
 muteButton.addEventListener('click', () => {
-  muted = !muted;
-  game.sound.mute = muted;
-  window.companion?.setMuted(muted);
+  snapshot = { ...snapshot, muted: !snapshot.muted };
+  game.sound.mute = snapshot.muted;
+  window.companion?.setMuted(snapshot.muted);
   render();
 });
 roastButton.addEventListener('click', () => {

@@ -1,4 +1,12 @@
-import { appendFile, mkdtemp, rm, truncate, writeFile } from 'node:fs/promises';
+import {
+  appendFile,
+  mkdtemp,
+  rename,
+  rm,
+  symlink,
+  truncate,
+  writeFile,
+} from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -78,5 +86,32 @@ describe('TranscriptTailer', () => {
       { path: transcriptPath, line: 'second' },
     ]);
     expect(await tailer.poll([transcriptPath])).toEqual([]);
+  });
+
+  it('resets at byte zero when the path is replaced by a larger file', async () => {
+    await writeFile(transcriptPath, 'old\n');
+    const tailer = new TranscriptTailer();
+    await tailer.setApprovedRoot(root);
+    await tailer.prime([transcriptPath]);
+    const replacement = join(root, 'replacement.jsonl');
+    await writeFile(replacement, 'fresh-first\n');
+    await rename(replacement, transcriptPath);
+
+    expect(await tailer.poll([transcriptPath])).toEqual([
+      { path: transcriptPath, line: 'fresh-first' },
+    ]);
+    expect(tailer.takeResetPaths()).toEqual([transcriptPath]);
+  });
+
+  it('refuses a final symlink that escapes the approved root', async () => {
+    const outsideRoot = await mkdtemp(join(tmpdir(), 'sbai-tailer-outside-'));
+    const outsideFile = join(outsideRoot, 'secret.jsonl');
+    await writeFile(outsideFile, 'secret\n');
+    await symlink(outsideFile, transcriptPath);
+    const tailer = new TranscriptTailer();
+    await tailer.setApprovedRoot(root);
+
+    expect(await tailer.poll([transcriptPath])).toEqual([]);
+    await rm(outsideRoot, { recursive: true, force: true });
   });
 });

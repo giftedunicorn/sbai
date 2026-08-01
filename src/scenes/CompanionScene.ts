@@ -1,7 +1,6 @@
 import Phaser from 'phaser';
 
 import { createInitialAgentState, registerHit } from '../game/agentState';
-import { createHitEvent } from '../game/eventGenerator';
 import { createRandom } from '../game/random';
 import type { AgentState } from '../game/agentState';
 import type { CatharsisEvent, Evidence } from '../shared/companion';
@@ -123,12 +122,17 @@ export class CompanionScene extends Phaser.Scene {
 
   private performHit(forceScale: number): void {
     this.state = registerHit(this.state);
-    const hit = createHitEvent({ combo: this.state.combo, random: this.random });
     const targetBody = this.actors.target.body as Phaser.Physics.Arcade.Body;
     const direction = this.actors.target.x >= this.actors.companion.x ? 1 : -1;
+    const comboBoost = Math.min(this.state.combo, 12);
+    const horizontalForce = 220 + comboBoost * 18 + this.random.integer(90);
+    const verticalForce = -(260 + comboBoost * 12 + this.random.integer(80));
 
     if (!this.reducedMotion) {
-      targetBody.setVelocity(direction * Math.abs(hit.force.x) * forceScale, hit.force.y * forceScale);
+      targetBody.setVelocity(
+        direction * horizontalForce * forceScale,
+        verticalForce * forceScale,
+      );
       targetBody.setAngularVelocity(direction * 130 * forceScale);
       this.cameras.main.shake(70, Math.min(0.014, 0.004 + forceScale * 0.005));
       this.tweens.add({

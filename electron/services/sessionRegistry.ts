@@ -31,30 +31,40 @@ function sessionLabel(sessionId: string): string {
 
 export class SessionRegistry {
   private readonly sessions = new Map<string, SessionEntry>();
-  private readonly sessionIdByPath = new Map<string, string>();
+  private readonly targetIdByIdentity = new Map<string, string>();
+  private readonly activeTargetIdByPath = new Map<string, string>();
+  private nextTargetNumber = 1;
 
   constructor(private readonly now: () => number = Date.now) {}
 
-  ingest(path: string, record: NormalizedTranscriptRecord): void {
-    const previousIdForPath = this.sessionIdByPath.get(path);
-    if (previousIdForPath && previousIdForPath !== record.sessionId) {
-      this.endEntry(previousIdForPath);
+  ingest(path: string, record: NormalizedTranscriptRecord): string {
+    const identity = `${path}\0${record.sessionId}`;
+    let targetId = this.targetIdByIdentity.get(identity);
+    if (!targetId) {
+      targetId = `agent-${this.nextTargetNumber}`;
+      this.nextTargetNumber += 1;
+      this.targetIdByIdentity.set(identity, targetId);
     }
 
-    let entry = this.sessions.get(record.sessionId);
+    const previousTargetForPath = this.activeTargetIdByPath.get(path);
+    if (previousTargetForPath && previousTargetForPath !== targetId) {
+      this.endEntry(previousTargetForPath);
+    }
+
+    let entry = this.sessions.get(targetId);
     if (!entry) {
       entry = {
         path,
-        id: record.sessionId,
+        id: targetId,
         label: sessionLabel(record.sessionId),
         projectLabel: projectLabel(record.cwd),
         lastActivityAt: record.timestamp,
         ended: false,
         recent: [],
       };
-      this.sessions.set(record.sessionId, entry);
+      this.sessions.set(targetId, entry);
     } else {
-      if (entry.path !== path) this.sessionIdByPath.delete(entry.path);
+      if (entry.path !== path) this.activeTargetIdByPath.delete(entry.path);
       entry.path = path;
       entry.projectLabel = projectLabel(record.cwd);
       entry.lastActivityAt = Math.max(entry.lastActivityAt, record.timestamp);
@@ -65,7 +75,8 @@ export class SessionRegistry {
     if (entry.recent.length > MAX_RECENT_RECORDS) {
       entry.recent.splice(0, entry.recent.length - MAX_RECENT_RECORDS);
     }
-    this.sessionIdByPath.set(path, record.sessionId);
+    this.activeTargetIdByPath.set(path, targetId);
+    return targetId;
   }
 
   getRecent(sessionId: string): readonly NormalizedTranscriptRecord[] {
@@ -77,9 +88,14 @@ export class SessionRegistry {
     return entry ? this.toSummary(entry) : undefined;
   }
 
-  snapshot(paused: boolean, processPresent: boolean): CompanionSnapshot {
+  snapshot(
+    paused: boolean,
+    processPresent: boolean,
+    muted = false,
+  ): CompanionSnapshot {
     return {
       paused,
+      muted,
       claudeProcessPresent: processPresent,
       sessions: [...this.sessions.values()]
         .map((entry) => this.toSummary(entry))
@@ -91,21 +107,23 @@ export class SessionRegistry {
   }
 
   markEndedByPath(path: string): void {
-    const sessionId = this.sessionIdByPath.get(path);
-    if (sessionId) this.endEntry(sessionId);
+    const targetId = this.activeTargetIdByPath.get(path);
+    if (targetId) this.endEntry(targetId);
   }
 
   clear(): void {
     this.sessions.clear();
-    this.sessionIdByPath.clear();
+    this.targetIdByIdentity.clear();
+    this.activeTargetIdByPath.clear();
+    this.nextTargetNumber = 1;
   }
 
-  private endEntry(sessionId: string): void {
-    const entry = this.sessions.get(sessionId);
+  private endEntry(targetId: string): void {
+    const entry = this.sessions.get(targetId);
     if (!entry) return;
     entry.ended = true;
     entry.recent = [];
-    this.sessionIdByPath.delete(entry.path);
+    this.activeTargetIdByPath.delete(entry.path);
   }
 
   private toSummary(entry: SessionEntry): SessionSummary {
