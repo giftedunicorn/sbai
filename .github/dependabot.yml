@@ -1,0 +1,22 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: monthly
+      time: "09:00"
+      timezone: Asia/Shanghai
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+    commit-message:
+      prefix: deps
+    groups:
+      runtime-dependencies:
+        patterns:
+          - "*"
+        dependency-type: production
+      development-dependencies:
+        patterns:
+          - "*"
+        dependency-type: development

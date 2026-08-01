@@ -87,11 +87,11 @@ concurrency:
   cancel-in-progress: true
 ```
 
-The single Ubuntu job has display name `CI / test-and-build`, uses `actions/checkout@v4`, `actions/setup-node@v4` with Node 24 and npm cache, then runs `npm ci`, `npm test`, `npm run build`, and `npm audit --audit-level=high`.
+The single Ubuntu job has display name `CI / test-and-build`, uses `actions/checkout@v6`, `actions/setup-node@v6` with Node 24 and npm cache, then runs `npm ci`, `npm test`, `npm run build`, and `npm audit --audit-level=high`.
 
 - [ ] **Step 2: Add monthly Dependabot checks**
 
-Configure npm updates for `/` on the first Monday of each month at 09:00 Asia/Shanghai time. Set `open-pull-requests-limit: 5`, group production and development dependencies separately, and label pull requests `dependencies`.
+Configure npm updates for `/` on the first day of each month at 09:00 Asia/Shanghai time. Set `open-pull-requests-limit: 5`, group production and development dependencies separately, and label pull requests `dependencies`.
 
 - [ ] **Step 3: Validate and commit automation**
 
