@@ -1,5 +1,10 @@
 # 嘴替.EXE
 
+[![CI](https://github.com/giftedunicorn/sbai/actions/workflows/ci.yml/badge.svg)](https://github.com/giftedunicorn/sbai/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/github/license/giftedunicorn/sbai)](LICENSE)
+[![Electron 43](https://img.shields.io/badge/Electron-43-47848f?logo=electron&logoColor=white)](https://www.electronjs.org/)
+[![Local first](https://img.shields.io/badge/data-local--first-2f855a)](#安全和隐私边界)
+
 一个独立、只读、本地优先的 AI coding agent 出气伴侣。
 
 它观察 Claude Code 新追加的 transcript 内容。当主人明确生气，或手动点名某个 Agent 时，像素打手会进入舞台，依据真实失败记录替主人吐槽并表演一套像素连招。它不会打断任务，不会修改会话，也不会自动把任何话发回 Agent。
@@ -35,7 +40,7 @@ V1 的核心路径没有账号、遥测或网络请求。
 
 ## 开发
 
-需要 Node.js 和 npm。
+需要 Node.js 24 LTS 和 npm。
 
 ```bash
 npm install
@@ -88,6 +93,10 @@ npm run build
 
 - [AI Agent Companion V1 Design](docs/superpowers/specs/2026-08-01-ai-agent-companion-v1-design.md)
 - [AI Agent Companion V1 Implementation Plan](docs/superpowers/plans/2026-08-01-ai-agent-companion-v1-implementation.md)
+
+## 参与贡献
+
+欢迎提交聚焦、可验证的小改动。开始前请阅读 [贡献指南](CONTRIBUTING.md) 和 [行为准则](CODE_OF_CONDUCT.md)。安全或隐私问题请按照 [安全策略](SECURITY.md) 私下报告，不要发布真实 transcript、路径、命令或凭据。
 
 ## License
 

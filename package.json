@@ -3,7 +3,28 @@
   "version": "0.1.0",
   "private": true,
   "main": "dist-electron/electron/main.js",
-  "description": "A lightweight parody AI coding agent stress-relief web game.",
+  "description": "A local-first pixel companion for blowing off steam at AI coding agents without interrupting their work.",
+  "license": "MIT",
+  "homepage": "https://github.com/giftedunicorn/sbai#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/giftedunicorn/sbai.git"
+  },
+  "bugs": {
+    "url": "https://github.com/giftedunicorn/sbai/issues"
+  },
+  "keywords": [
+    "ai-agents",
+    "claude-code",
+    "electron",
+    "local-first",
+    "phaser",
+    "pixel-art",
+    "privacy"
+  ],
+  "engines": {
+    "node": ">=24"
+  },
   "type": "module",
   "scripts": {
     "dev": "npm run build && electron .",
