@@ -40,6 +40,7 @@ export class CompanionRuntime {
   private knownPaths = new Set<string>();
   private paused = false;
   private muted = false;
+  private rootAvailable = false;
   private lastProcessPresent = false;
   private interval: ReturnType<typeof setInterval> | undefined;
   private activeTick: Promise<void> | null = null;
@@ -64,6 +65,7 @@ export class CompanionRuntime {
     this.root = root;
     const rootAvailable = await this.tailer.setApprovedRoot(root);
     if (generation !== this.generation || this.root !== root) return;
+    this.rootAvailable = rootAvailable;
     const paths = rootAvailable ? await this.discover(root) : [];
     if (generation !== this.generation || this.root !== root) return;
 
@@ -102,6 +104,7 @@ export class CompanionRuntime {
     this.knownPaths.clear();
     this.tailer.clear();
     this.registry.clear();
+    this.rootAvailable = false;
     this.lastProcessPresent = false;
   }
 
@@ -127,12 +130,25 @@ export class CompanionRuntime {
     const root = this.root;
     if (!root) return;
     const generation = this.generation;
+    const wasRootAvailable = this.rootAvailable;
     const rootAvailable = await this.tailer.setApprovedRoot(root);
     if (generation !== this.generation || root !== this.root) return;
+    this.rootAvailable = rootAvailable;
     const paths = rootAvailable ? await this.discover(root) : [];
     if (generation !== this.generation || root !== this.root) return;
 
     const pathSet = new Set(paths);
+
+    if (rootAvailable && !wasRootAvailable) {
+      await this.tailer.prime(paths);
+      if (generation !== this.generation || root !== this.root) return;
+      this.knownPaths = pathSet;
+      this.lastProcessPresent = await this.processPresent();
+      if (generation !== this.generation || root !== this.root) return;
+      this.emitSnapshot();
+      return;
+    }
+
     for (const previousPath of this.knownPaths) {
       if (pathSet.has(previousPath)) continue;
       this.registry.markEndedByPath(previousPath);

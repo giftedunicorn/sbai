@@ -76,19 +76,6 @@ function intensityForScore(score: number): AngerIntensity {
   return 'annoyed';
 }
 
-function hasNamedAgentAccusation(text: string): boolean {
-  const accusation = '(?:乱改|删|搞坏|弄坏|没跑|擅自|骗人|胡说|傻逼|废物|垃圾|蠢)';
-  const agentBeforeAccusation = new RegExp(
-    `(?:claude|agent).{0,18}${accusation}`,
-    'i',
-  );
-  const accusationBeforeAgent = new RegExp(
-    `${accusation}.{0,18}(?:claude|agent)`,
-    'i',
-  );
-  return agentBeforeAccusation.test(text) || accusationBeforeAgent.test(text);
-}
-
 export function detectOwnerAnger(text: string): RageDetection | null {
   if (REJECTED_REQUEST_MARKERS.some((pattern) => pattern.test(text))) return null;
 
@@ -96,12 +83,7 @@ export function detectOwnerAnger(text: string): RageDetection | null {
   if (!normalized) return null;
 
   const directlyAddressesAgent = includesAny(normalized, DIRECT_ADDRESS_TERMS);
-  if (
-    includesAny(normalized, THIRD_PARTY_TERMS) &&
-    !hasNamedAgentAccusation(normalized)
-  ) {
-    return null;
-  }
+  if (includesAny(normalized, THIRD_PARTY_TERMS)) return null;
 
   let score = directlyAddressesAgent ? 2 : 0;
   score += scoreTerms(normalized, FRUSTRATION_TERMS);

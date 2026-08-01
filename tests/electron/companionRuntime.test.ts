@@ -1,4 +1,4 @@
-import { appendFile, mkdtemp, rename, rm, writeFile } from 'node:fs/promises';
+import { appendFile, mkdir, mkdtemp, rename, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -74,6 +74,35 @@ describe('CompanionRuntime', () => {
 
     await expect(runtime.start(missingRoot)).resolves.toBeUndefined();
     expect(snapshots.at(-1)?.sessions).toEqual([]);
+    runtime.stop();
+  });
+
+  it('primes recovered roots before consuming new appended records', async () => {
+    const missingRoot = join(root, 'temporarily-unavailable-root');
+    const recoveredTranscript = join(missingRoot, 'recovered.jsonl');
+    const catharsis: CatharsisEvent[] = [];
+    const runtime = new CompanionRuntime({
+      intervalMs: 0,
+      processPresent: async () => false,
+      onSnapshot: () => undefined,
+      onCatharsis: (event) => catharsis.push(event),
+    });
+
+    await runtime.start(missingRoot);
+    await mkdir(missingRoot);
+    await writeFile(
+      recoveredTranscript,
+      line(owner('s1', '谁让你乱改二十个文件的？', '2026-08-01T10:00:00Z')),
+    );
+    await runtime.tick();
+    expect(catharsis).toEqual([]);
+
+    await appendFile(
+      recoveredTranscript,
+      line(owner('s1', '你他妈又删我代码，真是个傻逼', '2026-08-01T10:00:01Z')),
+    );
+    await runtime.tick();
+    expect(catharsis).toHaveLength(1);
     runtime.stop();
   });
 
