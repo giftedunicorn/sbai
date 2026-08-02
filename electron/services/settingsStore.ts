@@ -3,12 +3,14 @@ import { isAbsolute, join } from 'node:path';
 
 export interface CompanionSettings {
   approvedClaudeRoot: string | null;
+  approvedCodexRoot: string | null;
   paused: boolean;
   muted: boolean;
 }
 
 export const DEFAULT_SETTINGS: Readonly<CompanionSettings> = Object.freeze({
   approvedClaudeRoot: null,
+  approvedCodexRoot: null,
   paused: false,
   muted: false,
 });
@@ -19,15 +21,22 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function sanitizeSettings(value: unknown): CompanionSettings | null {
   if (!isRecord(value)) return null;
-  const root = value.approvedClaudeRoot;
-  const validRoot =
+  const claudeRoot = value.approvedClaudeRoot;
+  const codexRoot = value.approvedCodexRoot ?? null;
+  const validRoot = (root: unknown) =>
     root === null ||
     (typeof root === 'string' && root.trim().length > 0 && isAbsolute(root));
-  if (!validRoot || typeof value.paused !== 'boolean' || typeof value.muted !== 'boolean') {
+  if (
+    !validRoot(claudeRoot) ||
+    !validRoot(codexRoot) ||
+    typeof value.paused !== 'boolean' ||
+    typeof value.muted !== 'boolean'
+  ) {
     return null;
   }
   return {
-    approvedClaudeRoot: root as string | null,
+    approvedClaudeRoot: claudeRoot as string | null,
+    approvedCodexRoot: codexRoot as string | null,
     paused: value.paused,
     muted: value.muted,
   };

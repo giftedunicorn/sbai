@@ -8,11 +8,13 @@ import {
   STOP_EVENT,
 } from './scenes/CompanionScene';
 import type {
+  AgentSource,
   CatharsisEvent,
   CompanionSnapshot,
   SessionSummary,
 } from './shared/companion';
 import { renderSessionList } from './ui/sessionList';
+import { connectionLabel } from './ui/connectionStatus';
 
 function requiredElement<T extends HTMLElement>(selector: string): T {
   const element = document.querySelector<T>(selector);
@@ -24,7 +26,8 @@ const gameStage = requiredElement<HTMLElement>('#game');
 const sessionList = requiredElement<HTMLElement>('#session-list');
 const connectionStatus = requiredElement<HTMLElement>('#connection-status');
 const closeButton = requiredElement<HTMLButtonElement>('#close-button');
-const approveButton = requiredElement<HTMLButtonElement>('#approve-button');
+const approveClaudeButton = requiredElement<HTMLButtonElement>('#approve-claude-button');
+const approveCodexButton = requiredElement<HTMLButtonElement>('#approve-codex-button');
 const pauseButton = requiredElement<HTMLButtonElement>('#pause-button');
 const roastButton = requiredElement<HTMLButtonElement>('#roast-button');
 const copyButton = requiredElement<HTMLButtonElement>('#copy-button');
@@ -40,7 +43,7 @@ const demoSessions: SessionSummary[] = [
   },
   {
     id: 'demo-side',
-    label: 'Claude demo-si',
+    label: 'Codex demo-si',
     projectLabel: 'side-quest',
     status: 'idle',
     lastActivityAt: Date.now() - 90_000,
@@ -50,7 +53,7 @@ const demoSessions: SessionSummary[] = [
 let snapshot: CompanionSnapshot = {
   paused: false,
   muted: false,
-  claudeProcessPresent: false,
+  processPresence: { claudeCode: false, codex: false },
   sessions: window.companion ? [] : demoSessions,
 };
 let selectedId: string | null = snapshot.sessions[0]?.id ?? null;
@@ -103,17 +106,17 @@ function render(): void {
   const visibleSessions = snapshot.sessions.filter(
     (session) => session.status === 'active' || session.status === 'idle',
   );
-  connectionStatus.textContent = snapshot.claudeProcessPresent
-    ? `CLAUDE ONLINE / ${visibleSessions.length} AGENT${visibleSessions.length === 1 ? '' : 'S'}`
-    : window.companion
-      ? 'LOCAL ONLY'
-      : 'WEB DEMO / OFFLINE';
+  connectionStatus.textContent = connectionLabel(
+    snapshot.processPresence,
+    visibleSessions.length,
+    Boolean(window.companion),
+  );
   pauseButton.textContent = snapshot.paused ? '继续' : '暂停';
   pauseButton.setAttribute('aria-pressed', String(snapshot.paused));
   muteButton.textContent = snapshot.muted ? '开声' : '静音';
   muteButton.setAttribute('aria-pressed', String(snapshot.muted));
-  approveButton.textContent = window.companion ? '目录' : '演示';
-  approveButton.disabled = !window.companion;
+  approveClaudeButton.disabled = !window.companion;
+  approveCodexButton.disabled = !window.companion;
   copyButton.disabled = lastCopyText.length === 0;
 
   const session = selectedSession();
@@ -159,10 +162,17 @@ game.events.on(PERFORMANCE_END_EVENT, () => {
 });
 
 closeButton.addEventListener('click', () => window.close());
-approveButton.addEventListener('click', async () => {
-  approveButton.disabled = true;
-  await window.companion?.approveRoot();
-  approveButton.disabled = false;
+async function approveRoot(source: AgentSource, button: HTMLButtonElement): Promise<void> {
+  button.disabled = true;
+  await window.companion?.approveRoot(source);
+  button.disabled = false;
+}
+
+approveClaudeButton.addEventListener('click', () => {
+  void approveRoot('claude-code', approveClaudeButton);
+});
+approveCodexButton.addEventListener('click', () => {
+  void approveRoot('codex', approveCodexButton);
 });
 pauseButton.addEventListener('click', () => {
   snapshot = { ...snapshot, paused: !snapshot.paused };

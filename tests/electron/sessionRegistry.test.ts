@@ -54,6 +54,38 @@ describe('SessionRegistry', () => {
     ]);
   });
 
+  it('labels sessions by their transcript source without exposing raw ids', () => {
+    const registry = new SessionRegistry(() => 10_000);
+    const claudeId = registry.ingest(
+      '/claude/session.jsonl',
+      'claude-code',
+      ownerRecord('private-claude-id', 9_000),
+    );
+    const codexId = registry.ingest(
+      '/codex/rollout.jsonl',
+      'codex',
+      ownerRecord('private-codex-id', 9_500),
+    );
+
+    expect(registry.getSession(claudeId)?.label).toBe('Claude #1');
+    expect(registry.getSession(codexId)?.label).toBe('Codex #2');
+    expect(JSON.stringify(registry.snapshot(false, false))).not.toContain('private-');
+  });
+
+  it('keeps source identities separate even when approved roots overlap', () => {
+    const registry = new SessionRegistry(() => 10_000);
+    const path = '/shared/rollout.jsonl';
+    const claudeId = registry.ingest(
+      path,
+      'claude-code',
+      ownerRecord('same-id', 9_000),
+    );
+    const codexId = registry.ingest(path, 'codex', ownerRecord('same-id', 9_500));
+
+    expect(registry.getSession(claudeId)?.status).toBe('active');
+    expect(registry.getSession(codexId)?.status).toBe('active');
+  });
+
   it('retains at most the 50 most recent records', () => {
     const registry = new SessionRegistry(() => 100);
     let targetId = '';
@@ -98,7 +130,7 @@ describe('SessionRegistry', () => {
     expect(registry.snapshot(true, false)).toEqual({
       paused: true,
       muted: false,
-      claudeProcessPresent: false,
+      processPresence: { claudeCode: false, codex: false },
       sessions: [],
     });
   });

@@ -62,6 +62,64 @@ afterEach(async () => {
 });
 
 describe('CompanionRuntime', () => {
+  it('monitors approved Claude Code and Codex roots at the same time', async () => {
+    const claudeRoot = join(root, 'claude');
+    const codexRoot = join(root, 'codex');
+    await mkdir(claudeRoot);
+    await mkdir(codexRoot);
+    const claudeTranscript = join(claudeRoot, 'session.jsonl');
+    const codexTranscript = join(codexRoot, 'rollout.jsonl');
+    await writeFile(claudeTranscript, '');
+    await writeFile(codexTranscript, '');
+    const snapshots: CompanionSnapshot[] = [];
+    const catharsis: CatharsisEvent[] = [];
+    const runtime = new CompanionRuntime({
+      intervalMs: 0,
+      processPresent: async () => false,
+      onSnapshot: (snapshot) => snapshots.push(snapshot),
+      onCatharsis: (event) => catharsis.push(event),
+    });
+
+    await runtime.start({
+      'claude-code': claudeRoot,
+      codex: codexRoot,
+    });
+    await appendFile(
+      claudeTranscript,
+      line(owner('claude-session', '这里类型不对，请修改', '2026-08-01T09:00:00Z')),
+    );
+    await appendFile(
+      codexTranscript,
+      line({
+        type: 'turn_context',
+        timestamp: '2026-08-01T09:00:01Z',
+        payload: { cwd: '/work/codex-project' },
+      }) +
+        line({
+          type: 'response_item',
+          timestamp: '2026-08-01T09:00:02Z',
+          payload: {
+            type: 'message',
+            role: 'user',
+            content: [{ type: 'input_text', text: '你他妈又乱改' }],
+          },
+        }),
+    );
+
+    await runtime.tick();
+
+    expect(snapshots.at(-1)?.sessions.map((session) => session.label).sort()).toEqual([
+      'Claude #1',
+      'Codex #2',
+    ]);
+    expect(catharsis).toHaveLength(1);
+    expect(
+      snapshots.at(-1)?.sessions.find((session) => session.label.startsWith('Codex'))
+        ?.projectLabel,
+    ).toBe('codex-project');
+    runtime.stop();
+  });
+
   it('starts safely with an unavailable persisted root', async () => {
     const missingRoot = join(root, 'deleted-approved-root');
     const snapshots: CompanionSnapshot[] = [];

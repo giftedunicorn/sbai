@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer } from 'electron';
 
 import type {
   CatharsisEvent,
+  AgentSource,
   CompanionBridge,
   CompanionSnapshot,
   Evidence,
@@ -53,7 +54,9 @@ function isSnapshot(value: unknown): value is CompanionSnapshot {
     isRecord(value) &&
     typeof value.paused === 'boolean' &&
     typeof value.muted === 'boolean' &&
-    typeof value.claudeProcessPresent === 'boolean' &&
+    isRecord(value.processPresence) &&
+    typeof value.processPresence.claudeCode === 'boolean' &&
+    typeof value.processPresence.codex === 'boolean' &&
     Array.isArray(value.sessions) &&
     value.sessions.every(isSession)
   );
@@ -104,8 +107,8 @@ const bridge: CompanionBridge = {
   stopAnimation() {
     ipcRenderer.send(IPC.stopAnimation);
   },
-  approveRoot() {
-    return ipcRenderer.invoke(IPC.approveRoot) as Promise<boolean>;
+  approveRoot(source: AgentSource) {
+    return ipcRenderer.invoke(IPC.approveRoot, source) as Promise<boolean>;
   },
 };
 

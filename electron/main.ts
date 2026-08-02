@@ -10,9 +10,13 @@ import {
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
 
-import { IPC, type CompanionSnapshot } from '../src/shared/companion.js';
+import {
+  IPC,
+  type AgentSource,
+  type CompanionSnapshot,
+} from '../src/shared/companion.js';
 import { CompanionRuntime } from './services/companionRuntime.js';
-import { hasClaudeProcess } from './services/processWatcher.js';
+import { getAgentProcessPresence } from './services/processWatcher.js';
 import {
   SettingsStore,
   type CompanionSettings,
@@ -120,18 +124,27 @@ function registerIpc(): void {
     // Animation state lives only in the renderer; this named signal has no task-side effect.
   });
 
-  ipcMain.handle(IPC.approveRoot, async (event) => {
+  ipcMain.handle(IPC.approveRoot, async (event, source: unknown) => {
     if (!isTrustedSender(event) || !mainWindow || !settings) return false;
+    if (source !== 'claude-code' && source !== 'codex') return false;
+    const approvedSource: AgentSource = source;
     const selection = await dialog.showOpenDialog(mainWindow, {
-      title: '选择 Claude Code transcripts 根目录',
+      title:
+        approvedSource === 'codex'
+          ? '选择 Codex sessions 根目录'
+          : '选择 Claude Code transcripts 根目录',
       properties: ['openDirectory'],
     });
     const approvedRoot = selection.filePaths[0];
     if (selection.canceled || !approvedRoot) return false;
 
-    settings.approvedClaudeRoot = approvedRoot;
+    if (approvedSource === 'codex') settings.approvedCodexRoot = approvedRoot;
+    else settings.approvedClaudeRoot = approvedRoot;
     persistSettings();
-    await runtime?.start(approvedRoot);
+    await runtime?.start({
+      'claude-code': settings.approvedClaudeRoot,
+      codex: settings.approvedCodexRoot,
+    });
     return true;
   });
 }
@@ -141,7 +154,7 @@ async function initialize(): Promise<void> {
   settingsStore = new SettingsStore(app.getPath('userData'));
   settings = await settingsStore.load();
   runtime = new CompanionRuntime({
-    processPresent: hasClaudeProcess,
+    processPresent: getAgentProcessPresence,
     onSnapshot(snapshot) {
       latestSnapshot = snapshot;
       sendToRenderer(IPC.snapshot, snapshot);
@@ -155,8 +168,11 @@ async function initialize(): Promise<void> {
   mainWindow.webContents.setAudioMuted(settings.muted);
   registerIpc();
 
-  if (settings.approvedClaudeRoot) {
-    await runtime.start(settings.approvedClaudeRoot);
+  if (settings.approvedClaudeRoot || settings.approvedCodexRoot) {
+    await runtime.start({
+      'claude-code': settings.approvedClaudeRoot,
+      codex: settings.approvedCodexRoot,
+    });
   }
 }
 

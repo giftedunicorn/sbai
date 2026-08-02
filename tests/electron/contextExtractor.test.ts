@@ -62,6 +62,20 @@ describe('extractEvidence', () => {
     expect(evidence.some((item) => item.value.includes('0 tests'))).toBe(false);
   });
 
+  it('extracts observed file paths from Codex apply_patch input', () => {
+    expect(
+      extractEvidence([
+        toolUse('patch-1', 'apply_patch', {
+          patch:
+            '*** Begin Patch\n*** Update File: src/main.ts\n*** Add File: src/new.ts\n*** End Patch',
+        }),
+      ]),
+    ).toEqual([
+      { kind: 'file-edit', value: 'src/main.ts', confidence: 'observed' },
+      { kind: 'file-edit', value: 'src/new.ts', confidence: 'observed' },
+    ]);
+  });
+
   it('deduplicates facts and caps the result at five', () => {
     const records: NormalizedTranscriptRecord[] = [];
     for (let index = 0; index < 7; index += 1) {

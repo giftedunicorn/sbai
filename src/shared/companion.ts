@@ -4,6 +4,8 @@ export type SessionStatus =
   | 'ended'
   | 'content-unavailable';
 
+export type AgentSource = 'claude-code' | 'codex';
+
 export type AngerIntensity = 'annoyed' | 'angry' | 'furious';
 export type TriggerKind = 'owner-anger' | 'manual';
 export type AttackAnimation = 'poke' | 'slap-combo' | 'token-explosion';
@@ -24,10 +26,15 @@ export interface SessionSummary {
   lastActivityAt: number;
 }
 
+export interface AgentProcessPresence {
+  claudeCode: boolean;
+  codex: boolean;
+}
+
 export interface CompanionSnapshot {
   paused: boolean;
   muted: boolean;
-  claudeProcessPresent: boolean;
+  processPresence: AgentProcessPresence;
   sessions: SessionSummary[];
 }
 
@@ -50,7 +57,7 @@ export interface CompanionBridge {
   setPaused(paused: boolean): void;
   setMuted(muted: boolean): void;
   stopAnimation(): void;
-  approveRoot(): Promise<boolean>;
+  approveRoot(source: AgentSource): Promise<boolean>;
 }
 
 export const IPC = {
@@ -117,7 +124,9 @@ export function isCompanionSnapshot(value: unknown): value is CompanionSnapshot 
     isRecord(value) &&
     typeof value.paused === 'boolean' &&
     typeof value.muted === 'boolean' &&
-    typeof value.claudeProcessPresent === 'boolean' &&
+    isRecord(value.processPresence) &&
+    typeof value.processPresence.claudeCode === 'boolean' &&
+    typeof value.processPresence.codex === 'boolean' &&
     Array.isArray(value.sessions) &&
     value.sessions.every(isSessionSummary)
   );
