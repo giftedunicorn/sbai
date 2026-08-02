@@ -93,9 +93,17 @@ describe('read-only companion flow', () => {
       'owner-anger',
       'manual',
     ]);
+    expect(JSON.stringify(catharsisEvents)).not.toContain('PRIVATE_FAILURE');
+    expect(JSON.stringify(catharsisEvents)).not.toContain('/work/private-project');
+    expect(JSON.stringify(catharsisEvents)).not.toContain('npm test');
 
     const settingsStore = new SettingsStore(userData);
-    await settingsStore.save({ approvedClaudeRoot: claudeRoot, paused: false, muted: false });
+    await settingsStore.save({
+      approvedClaudeRoot: claudeRoot,
+      approvedCodexRoot: null,
+      paused: false,
+      muted: false,
+    });
     const serializedSettings = await readFile(
       join(userData, 'companion-settings.json'),
       'utf8',
@@ -105,6 +113,7 @@ describe('read-only companion flow', () => {
     expect(serializedSettings).not.toContain('谁让你');
     expect(Object.keys(JSON.parse(serializedSettings)).sort()).toEqual([
       'approvedClaudeRoot',
+      'approvedCodexRoot',
       'muted',
       'paused',
     ]);

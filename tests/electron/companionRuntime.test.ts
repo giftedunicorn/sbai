@@ -62,6 +62,128 @@ afterEach(async () => {
 });
 
 describe('CompanionRuntime', () => {
+  it('monitors approved Claude Code and Codex roots at the same time', async () => {
+    const claudeRoot = join(root, 'claude');
+    const codexRoot = join(root, 'codex');
+    await mkdir(claudeRoot);
+    await mkdir(codexRoot);
+    const claudeTranscript = join(claudeRoot, 'session.jsonl');
+    const codexTranscript = join(codexRoot, 'rollout.jsonl');
+    await writeFile(claudeTranscript, '');
+    await writeFile(codexTranscript, '');
+    const snapshots: CompanionSnapshot[] = [];
+    const catharsis: CatharsisEvent[] = [];
+    const runtime = new CompanionRuntime({
+      intervalMs: 0,
+      processPresent: async () => false,
+      onSnapshot: (snapshot) => snapshots.push(snapshot),
+      onCatharsis: (event) => catharsis.push(event),
+    });
+
+    await runtime.start({
+      'claude-code': claudeRoot,
+      codex: codexRoot,
+    });
+    await appendFile(
+      claudeTranscript,
+      line(owner('claude-session', '这里类型不对，请修改', '2026-08-01T09:00:00Z')),
+    );
+    await appendFile(
+      codexTranscript,
+      line({
+        type: 'turn_context',
+        timestamp: '2026-08-01T09:00:01Z',
+        payload: { cwd: '/work/codex-project' },
+      }) +
+        line({
+          type: 'response_item',
+          timestamp: '2026-08-01T09:00:02Z',
+          payload: {
+            type: 'message',
+            role: 'user',
+            content: [{ type: 'input_text', text: '你他妈又乱改' }],
+          },
+        }),
+    );
+
+    await runtime.tick();
+
+    expect(snapshots.at(-1)?.sessions.map((session) => session.label).sort()).toEqual([
+      'Claude #1',
+      'Codex #2',
+    ]);
+    expect(catharsis).toHaveLength(1);
+    expect(
+      snapshots.at(-1)?.sessions.find((session) => session.label.startsWith('Codex'))
+        ?.projectLabel,
+    ).toBe('codex-project');
+    runtime.stop();
+  });
+
+  it('adds a Codex root without resetting or skipping the active Claude source', async () => {
+    const claudeRoot = join(root, 'claude-live');
+    const codexRoot = join(root, 'codex-added');
+    await mkdir(claudeRoot);
+    await mkdir(codexRoot);
+    const claudeTranscript = join(claudeRoot, 'session.jsonl');
+    const codexTranscript = join(codexRoot, 'rollout.jsonl');
+    await writeFile(claudeTranscript, '');
+    await writeFile(
+      codexTranscript,
+      line({
+        type: 'response_item',
+        timestamp: '2026-08-01T09:10:00Z',
+        payload: {
+          type: 'message',
+          role: 'user',
+          content: [{ type: 'input_text', text: 'old Codex history' }],
+        },
+      }),
+    );
+    const snapshots: CompanionSnapshot[] = [];
+    const runtime = new CompanionRuntime({
+      intervalMs: 0,
+      processPresent: async () => false,
+      onSnapshot: (snapshot) => snapshots.push(snapshot),
+      onCatharsis: () => undefined,
+    });
+    await runtime.start({ 'claude-code': claudeRoot });
+    await appendFile(
+      claudeTranscript,
+      line(owner('claude-live', '这里类型不对，请修改', '2026-08-01T09:10:01Z')),
+    );
+
+    await runtime.setRoot('codex', codexRoot);
+    await runtime.tick();
+
+    expect(snapshots.at(-1)?.sessions.map((session) => session.label)).toEqual([
+      'Claude #1',
+    ]);
+    await appendFile(
+      codexTranscript,
+      line({
+        type: 'turn_context',
+        timestamp: '2026-08-01T09:10:02Z',
+        payload: { cwd: '/work/codex-added' },
+      }) +
+        line({
+          type: 'response_item',
+          timestamp: '2026-08-01T09:10:03Z',
+          payload: {
+            type: 'message',
+            role: 'user',
+            content: [{ type: 'input_text', text: 'new Codex message' }],
+          },
+        }),
+    );
+    await runtime.tick();
+    expect(snapshots.at(-1)?.sessions.map((session) => session.label).sort()).toEqual([
+      'Claude #1',
+      'Codex #2',
+    ]);
+    runtime.stop();
+  });
+
   it('starts safely with an unavailable persisted root', async () => {
     const missingRoot = join(root, 'deleted-approved-root');
     const snapshots: CompanionSnapshot[] = [];
@@ -164,10 +286,16 @@ describe('CompanionRuntime', () => {
       trigger: 'owner-anger',
       intensity: 'angry',
     });
-    expect(catharsis[0].evidence.some((item) => item.value.includes('S1:'))).toBe(true);
-    expect(catharsis[0].evidence.some((item) => item.value.includes('S2_SECRET'))).toBe(
-      false,
-    );
+    expect(catharsis[0].evidence).toEqual([
+      {
+        kind: 'test-failure',
+        value: 'Observed test failure',
+        confidence: 'observed',
+      },
+    ]);
+    expect(JSON.stringify(catharsis[0])).not.toContain('S1:');
+    expect(JSON.stringify(catharsis[0])).not.toContain('S2_SECRET');
+    expect(JSON.stringify(catharsis[0])).not.toContain('npm test');
 
     runtime.setPaused(true);
     await appendFile(

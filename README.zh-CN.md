@@ -9,11 +9,11 @@
 
 一个独立、只读、本地优先的 AI coding agent 出气伴侣。
 
-它观察 Claude Code 新追加的 transcript 内容。当主人明确生气，或手动点名某个 Agent 时，像素打手会进入舞台，依据真实失败记录替主人吐槽并表演一套像素连招。它不会打断任务，不会修改会话，也不会自动把任何话发回 Agent。
+它观察 Claude Code 和 Codex 新追加的 transcript 内容。当主人明确生气，或手动点名某个 Agent 时，像素打手会进入舞台，依据真实失败记录替主人吐槽并表演一套像素连招。它不会打断任务，不会修改会话，也不会自动把任何话发回 Agent。
 
 ## V1 能做什么
 
-- 在固定的 420×560 Electron 窗口里显示多个 Claude Code session。
+- 在固定的 420×560 Electron 窗口里同时显示多个 Claude Code 和 Codex session。
 - 把持续增长的 JSONL transcript 当作 Agent 身份，不拿 PID 猜会话归属。
 - 只读取应用启动后新增的完整行，不翻旧聊天记录。
 - 只对主人新增的明确愤怒自动响应。普通修改意见、引用、翻译请求和骂第三方不会触发。
@@ -26,13 +26,13 @@
 
 V1 的核心路径没有账号、遥测或网络请求。
 
-- 不安装 Claude Code Hook，也不注入进程。
+- 不安装 Claude Code 或 Codex Hook，也不注入进程。
 - transcript 始终只读打开。应用没有写 transcript 或发送消息的代码路径。
 - 批准根目录会解析为真实路径，文件打开会拒绝最终软链并核验设备号与 inode，轮转后旧上下文立即清空。
-- 进程扫描只产生 `Claude 是否存在` 这一布尔提示，不保留 PID 或原始命令行。
+- 进程扫描只产生 `Claude Code 是否存在` 和 `Codex 是否存在` 两个布尔提示，不保留 PID 或原始命令行。
 - 每个 session 最多在内存中保留 50 条规范化记录。
 - session 结束或应用停止时，相关内存上下文会被清除。
-- 唯一持久化的设置是批准目录、暂停状态和静音状态。
+- 唯一持久化的设置是两个批准目录、暂停状态和静音状态。
 - session ID、对话内容、证据、怒气分数和吐槽不会写入设置文件。
 - 复制回话只会在主人明确点击后写入系统剪贴板，永远不会自动发送。
 - renderer 和 IPC 只看到本次运行生成的 `agent-N` 目标 ID，不接收原始 session ID 或 transcript 路径。
@@ -49,7 +49,7 @@ npm install
 npm run dev
 ```
 
-`npm run dev` 会先构建 Web 和 Electron 代码，再打开桌面窗口。首次使用时点击 `目录`，通过系统目录选择器批准你希望观察的 Claude Code transcript 根目录。没有批准目录时，后台不会开始观察。
+`npm run dev` 会先构建 Web 和 Electron 代码，再打开桌面窗口。首次使用时点击 `Claude` 和/或 `Codex`，通过系统目录选择器分别批准 transcript 根目录。Codex 通常把 session 放在 `~/.codex/sessions`，请选择这个目录本身。某个来源没有获批目录时，对应后台 watcher 不会开始观察。
 
 只运行无权限 Web 演示：
 
@@ -77,7 +77,8 @@ npm run build
 
 ## V1 限制
 
-- 只实现 Claude Code transcript 适配器。Codex、Cursor 和其他 Agent 适配器留到后续版本。
+- 已支持 Claude Code 和 Codex；Cursor 和其他 Agent 适配器留到后续版本。
+- Codex transcript JSONL 不是稳定的公开集成 API。适配器会忽略未知记录，但 Codex 本地格式变化后仍可能需要跟进更新。
 - 自动进程在线提示目前只在 macOS 实现。它只是提示，不影响 transcript 观察。
 - session 和上下文故意不持久化，应用重启后会忘记之前观察到的内容。
 - 未集成任何联网生成模型。离线模板始终可用。

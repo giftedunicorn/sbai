@@ -9,11 +9,11 @@
 
 A standalone, read-only, local-first catharsis companion for AI coding agents.
 
-It watches new lines appended to Claude Code transcripts. When you clearly lose patience or manually call out a session, the pixel enforcer takes the stage, roasts the agent using observed failure evidence, and delivers a pixel combo. It never interrupts the task, modifies the conversation, or sends anything back to the agent.
+It watches new lines appended to Claude Code and Codex transcripts. When you clearly lose patience or manually call out a session, the pixel enforcer takes the stage, roasts the agent using observed failure evidence, and delivers a pixel combo. It never interrupts the task, modifies the conversation, or sends anything back to the agent.
 
 ## What V1 can do
 
-- Show multiple Claude Code sessions in a fixed 420×560 Electron window.
+- Show multiple Claude Code and Codex sessions together in a fixed 420×560 Electron window.
 - Treat each growing JSONL transcript as the agent identity instead of guessing from process IDs.
 - Read only complete lines appended after the app starts, without replaying chat history.
 - React automatically only to new, unambiguous anger from the owner. Ordinary correction requests, quotations, translation requests, and insults aimed at third parties do not trigger it.
@@ -26,13 +26,13 @@ It watches new lines appended to Claude Code transcripts. When you clearly lose 
 
 The V1 core path has no account system, telemetry, or network requests.
 
-- It installs no Claude Code hooks and injects into no process.
+- It installs no Claude Code or Codex hooks and injects into no process.
 - Transcripts are always opened read-only. There is no code path for writing transcripts or sending messages.
 - The approved root resolves to its real path. File opening rejects final symlinks and verifies device and inode identity; rotating a transcript immediately clears its old context.
-- Process scanning produces only a `Claude present` boolean hint. It does not retain process IDs or raw command lines.
+- Process scanning produces only `Claude Code present` and `Codex present` boolean hints. It does not retain process IDs or raw command lines.
 - Each session keeps at most 50 normalized records in memory.
 - Session context is cleared when the session ends or the app stops.
-- The only persisted settings are the approved directory, paused state, and muted state.
+- The only persisted settings are the two approved directories, paused state, and muted state.
 - Source session IDs, conversation text, evidence, anger scores, and roasts are never written to the settings file.
 - A reply reaches the system clipboard only after an explicit click. It is never sent automatically.
 - The renderer and IPC receive only runtime-generated `agent-N` target IDs, never source session IDs or transcript paths.
@@ -49,7 +49,7 @@ npm install
 npm run dev
 ```
 
-`npm run dev` builds the web and Electron code before opening the desktop window. On first use, click `目录` (`Directory`) and approve the Claude Code transcript root you want to observe through the system directory picker. The watcher stays inactive until a root is approved.
+`npm run dev` builds the web and Electron code before opening the desktop window. On first use, click `Claude` and/or `Codex`, then approve each transcript root through the system directory picker. Codex normally stores sessions under `~/.codex/sessions`; choose that directory itself. Each watcher stays inactive until its root is approved.
 
 Run the permission-free web demo only:
 
@@ -77,7 +77,8 @@ Build output is written to `dist/` and `dist-electron/`. Neither directory is co
 
 ## V1 limitations
 
-- Only the Claude Code transcript adapter is implemented. Codex, Cursor, and other agent adapters are future work.
+- Claude Code and Codex are supported. Cursor and other agent adapters remain future work.
+- Codex transcript JSONL is not a stable public integration API. The adapter ignores unknown records and may need updates when Codex changes its local format.
 - Automatic process-presence hints currently work only on macOS. They are informational and do not affect transcript observation.
 - Sessions and context are intentionally ephemeral. Restarting the app forgets previously observed state.
 - No networked generation model is integrated. Offline templates are always available.

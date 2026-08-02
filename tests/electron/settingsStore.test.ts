@@ -25,6 +25,7 @@ describe('SettingsStore', () => {
     const store = new SettingsStore(userDataDirectory);
     await store.save({
       approvedClaudeRoot: '/approved/path',
+      approvedCodexRoot: '/approved/codex',
       paused: false,
       muted: false,
       transcriptContent: 'private words',
@@ -39,6 +40,7 @@ describe('SettingsStore', () => {
     );
     expect(serialized).toEqual({
       approvedClaudeRoot: '/approved/path',
+      approvedCodexRoot: '/approved/codex',
       paused: false,
       muted: false,
     });
@@ -72,8 +74,26 @@ describe('SettingsStore', () => {
 
     expect(await new SettingsStore(userDataDirectory).load()).toEqual({
       approvedClaudeRoot: '/approved/path',
+      approvedCodexRoot: null,
       paused: true,
       muted: false,
+    });
+  });
+
+  it('persists a separately approved Codex sessions root', async () => {
+    const store = new SettingsStore(userDataDirectory);
+    await store.save({
+      approvedClaudeRoot: null,
+      approvedCodexRoot: '/Users/owner/.codex/sessions',
+      paused: false,
+      muted: true,
+    });
+
+    expect(await store.load()).toEqual({
+      approvedClaudeRoot: null,
+      approvedCodexRoot: '/Users/owner/.codex/sessions',
+      paused: false,
+      muted: true,
     });
   });
 });

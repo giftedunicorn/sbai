@@ -43,7 +43,7 @@ describe('companion contracts', () => {
       isCompanionSnapshot({
         paused: false,
         muted: false,
-        claudeProcessPresent: true,
+        processPresence: { claudeCode: true, codex: true },
         sessions: [
           {
             id: 's1',
@@ -59,7 +59,7 @@ describe('companion contracts', () => {
     expect(
       isCompanionSnapshot({
         paused: false,
-        claudeProcessPresent: true,
+        processPresence: { claudeCode: true, codex: false },
         sessions: [],
       }),
     ).toBe(false);
@@ -67,7 +67,7 @@ describe('companion contracts', () => {
     expect(
       isCompanionSnapshot({
         paused: false,
-        claudeProcessPresent: true,
+        processPresence: { claudeCode: true, codex: false },
         sessions: [{ id: 's1', status: 'invented' }],
       }),
     ).toBe(false);

@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { parseClaudeProcessPresence } from '../../electron/services/processWatcher';
+import {
+  parseAgentProcessPresence,
+  parseClaudeProcessPresence,
+} from '../../electron/services/processWatcher';
 
 describe('parseClaudeProcessPresence', () => {
   it('detects an actual Claude executable token', () => {
@@ -29,5 +32,30 @@ describe('parseClaudeProcessPresence', () => {
     expect(presence).toBe(true);
     expect(typeof presence).toBe('boolean');
     expect(JSON.stringify(presence)).not.toContain('private-session-id');
+  });
+});
+
+describe('parseAgentProcessPresence', () => {
+  it('reports Claude Code and Codex CLI presence without returning commands', () => {
+    const output = [
+      '  202 /Users/owner/.local/bin/claude --resume private-claude-id',
+      '  303 /opt/homebrew/bin/codex resume private-codex-id',
+    ].join('\n');
+
+    const presence = parseAgentProcessPresence(output);
+    expect(presence).toEqual({ claudeCode: true, codex: true });
+    expect(JSON.stringify(presence)).not.toContain('private-');
+  });
+
+  it('does not mistake desktop app processes or arguments for CLI agents', () => {
+    const output = [
+      '  101 /Applications/Codex.app/Contents/MacOS/Codex',
+      '  202 /usr/bin/node server.js --agent codex',
+    ].join('\n');
+
+    expect(parseAgentProcessPresence(output)).toEqual({
+      claudeCode: false,
+      codex: false,
+    });
   });
 });

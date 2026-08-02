@@ -1,7 +1,10 @@
 import type {
+  AgentSource,
+  AgentProcessPresence,
   CatharsisEvent,
   CompanionSnapshot,
   TriggerKind,
+  Evidence,
 } from '../../src/shared/companion.js';
 import { extractEvidence } from './contextExtractor.js';
 import { createRoastWithFallback, type MouthpieceProvider } from './pluginHost.js';
@@ -9,14 +12,41 @@ import { detectAutomaticAnger, manualAnger } from './rageDetector.js';
 import { RoastEngine } from './roastEngine.js';
 import { discoverTranscriptFiles } from './sessionDiscovery.js';
 import { SessionRegistry } from './sessionRegistry.js';
-import { parseTranscriptLine } from './transcriptParser.js';
+import {
+  CodexTranscriptParser,
+  parseTranscriptLine,
+} from './transcriptParser.js';
 import { TranscriptTailer } from './transcriptTailer.js';
+
+export type ApprovedTranscriptRoots = Partial<Record<AgentSource, string | null>>;
+
+interface SourceState {
+  source: AgentSource;
+  root: string;
+  tailer: TranscriptTailer;
+  knownPaths: Set<string>;
+  rootAvailable: boolean;
+}
+
+const PUBLIC_EVIDENCE_SUMMARY: Record<Evidence['kind'], string> = {
+  'test-failure': 'Observed test failure',
+  'tool-failure': 'Observed tool failure',
+  'file-edit': 'Observed file edit',
+};
+
+function publicEvidence(evidence: readonly Evidence[]): Evidence[] {
+  return evidence.map((item) => ({
+    kind: item.kind,
+    value: PUBLIC_EVIDENCE_SUMMARY[item.kind],
+    confidence: 'observed',
+  }));
+}
 
 export interface CompanionRuntimeOptions {
   intervalMs?: number;
   now?: () => number;
   discover?: typeof discoverTranscriptFiles;
-  processPresent?: () => Promise<boolean>;
+  processPresent?: () => Promise<boolean | AgentProcessPresence>;
   tailer?: TranscriptTailer;
   registry?: SessionRegistry;
   roastEngine?: RoastEngine;
@@ -28,20 +58,22 @@ export interface CompanionRuntimeOptions {
 export class CompanionRuntime {
   private readonly intervalMs: number;
   private readonly discover: typeof discoverTranscriptFiles;
-  private readonly processPresent: () => Promise<boolean>;
-  private readonly tailer: TranscriptTailer;
+  private readonly processPresent: () => Promise<boolean | AgentProcessPresence>;
+  private readonly initialClaudeTailer?: TranscriptTailer;
   private readonly registry: SessionRegistry;
   private readonly roastEngine: RoastEngine;
   private readonly provider?: MouthpieceProvider;
   private readonly onSnapshot: (snapshot: CompanionSnapshot) => void;
   private readonly onCatharsis: (event: CatharsisEvent) => void;
 
-  private root: string | null = null;
-  private knownPaths = new Set<string>();
+  private readonly sources = new Map<AgentSource, SourceState>();
+  private readonly codexParser = new CodexTranscriptParser();
   private paused = false;
   private muted = false;
-  private rootAvailable = false;
-  private lastProcessPresent = false;
+  private lastProcessPresent: AgentProcessPresence = {
+    claudeCode: false,
+    codex: false,
+  };
   private interval: ReturnType<typeof setInterval> | undefined;
   private activeTick: Promise<void> | null = null;
   private generation = 0;
@@ -51,7 +83,7 @@ export class CompanionRuntime {
     this.intervalMs = options.intervalMs ?? 750;
     this.discover = options.discover ?? discoverTranscriptFiles;
     this.processPresent = options.processPresent ?? (async () => false);
-    this.tailer = options.tailer ?? new TranscriptTailer();
+    this.initialClaudeTailer = options.tailer;
     this.registry = options.registry ?? new SessionRegistry(options.now);
     this.roastEngine = options.roastEngine ?? new RoastEngine();
     this.provider = options.provider;
@@ -59,21 +91,34 @@ export class CompanionRuntime {
     this.onCatharsis = options.onCatharsis;
   }
 
-  async start(root: string): Promise<void> {
+  async start(rootOrRoots: string | ApprovedTranscriptRoots): Promise<void> {
     this.stop();
     const generation = this.generation;
-    this.root = root;
-    const rootAvailable = await this.tailer.setApprovedRoot(root);
-    if (generation !== this.generation || this.root !== root) return;
-    this.rootAvailable = rootAvailable;
-    const paths = rootAvailable ? await this.discover(root) : [];
-    if (generation !== this.generation || this.root !== root) return;
+    const roots: ApprovedTranscriptRoots =
+      typeof rootOrRoots === 'string'
+        ? { 'claude-code': rootOrRoots }
+        : rootOrRoots;
 
-    await this.tailer.prime(paths);
-    if (generation !== this.generation || this.root !== root) return;
-    this.knownPaths = new Set(paths);
-    this.lastProcessPresent = await this.processPresent();
-    if (generation !== this.generation || this.root !== root) return;
+    for (const source of ['claude-code', 'codex'] as const) {
+      const root = roots[source];
+      if (!root) continue;
+      const state: SourceState = {
+        source,
+        root,
+        tailer:
+          source === 'claude-code' && this.initialClaudeTailer
+            ? this.initialClaudeTailer
+            : new TranscriptTailer(),
+        knownPaths: new Set(),
+        rootAvailable: false,
+      };
+      this.sources.set(source, state);
+      await this.initializeSource(state, generation);
+      if (generation !== this.generation) return;
+    }
+
+    this.lastProcessPresent = this.normalizeProcessPresence(await this.processPresent());
+    if (generation !== this.generation) return;
     this.emitSnapshot();
 
     if (this.intervalMs > 0) {
@@ -81,6 +126,37 @@ export class CompanionRuntime {
         void this.tick().catch(() => undefined);
       }, this.intervalMs);
     }
+  }
+
+  async setRoot(source: AgentSource, root: string | null): Promise<void> {
+    if (this.activeTick) await this.activeTick;
+    const generation = this.generation;
+    const previous = this.sources.get(source);
+    if (previous) {
+      for (const path of previous.knownPaths) {
+        this.registry.markEndedByPath(path, source);
+        if (source === 'codex') this.codexParser.forget(path);
+      }
+      previous.tailer.clear();
+      this.sources.delete(source);
+    }
+
+    if (root) {
+      const state: SourceState = {
+        source,
+        root,
+        tailer:
+          source === 'claude-code' && this.initialClaudeTailer
+            ? this.initialClaudeTailer
+            : new TranscriptTailer(),
+        knownPaths: new Set(),
+        rootAvailable: false,
+      };
+      this.sources.set(source, state);
+      await this.initializeSource(state, generation);
+      if (generation !== this.generation) return;
+    }
+    this.emitSnapshot();
   }
 
   async tick(): Promise<void> {
@@ -100,12 +176,11 @@ export class CompanionRuntime {
     this.pendingCatharsis.clear();
     if (this.interval) clearInterval(this.interval);
     this.interval = undefined;
-    this.root = null;
-    this.knownPaths.clear();
-    this.tailer.clear();
+    for (const state of this.sources.values()) state.tailer.clear();
+    this.sources.clear();
+    this.codexParser.clear();
     this.registry.clear();
-    this.rootAvailable = false;
-    this.lastProcessPresent = false;
+    this.lastProcessPresent = { claudeCode: false, codex: false };
   }
 
   setPaused(paused: boolean): void {
@@ -127,55 +202,73 @@ export class CompanionRuntime {
   }
 
   private async tickOnce(): Promise<void> {
-    const root = this.root;
-    if (!root) return;
+    if (this.sources.size === 0) return;
     const generation = this.generation;
-    const wasRootAvailable = this.rootAvailable;
-    const rootAvailable = await this.tailer.setApprovedRoot(root);
-    if (generation !== this.generation || root !== this.root) return;
-    this.rootAvailable = rootAvailable;
-    const paths = rootAvailable ? await this.discover(root) : [];
-    if (generation !== this.generation || root !== this.root) return;
+    for (const state of this.sources.values()) {
+      await this.tickSource(state, generation);
+      if (generation !== this.generation) return;
+    }
 
+    this.lastProcessPresent = this.normalizeProcessPresence(await this.processPresent());
+    if (generation !== this.generation) return;
+    this.emitSnapshot();
+  }
+
+  private async initializeSource(state: SourceState, generation: number): Promise<void> {
+    const rootAvailable = await state.tailer.setApprovedRoot(state.root);
+    if (generation !== this.generation || this.sources.get(state.source) !== state) return;
+    state.rootAvailable = rootAvailable;
+    const paths = rootAvailable ? await this.discover(state.root) : [];
+    if (generation !== this.generation || this.sources.get(state.source) !== state) return;
+    await state.tailer.prime(paths);
+    if (generation !== this.generation || this.sources.get(state.source) !== state) return;
+    state.knownPaths = new Set(paths);
+  }
+
+  private async tickSource(state: SourceState, generation: number): Promise<void> {
+    const wasRootAvailable = state.rootAvailable;
+    const rootAvailable = await state.tailer.setApprovedRoot(state.root);
+    if (generation !== this.generation || this.sources.get(state.source) !== state) return;
+    state.rootAvailable = rootAvailable;
+    const paths = rootAvailable ? await this.discover(state.root) : [];
+    if (generation !== this.generation || this.sources.get(state.source) !== state) return;
     const pathSet = new Set(paths);
 
     if (rootAvailable && !wasRootAvailable) {
-      await this.tailer.prime(paths);
-      if (generation !== this.generation || root !== this.root) return;
-      this.knownPaths = pathSet;
-      this.lastProcessPresent = await this.processPresent();
-      if (generation !== this.generation || root !== this.root) return;
-      this.emitSnapshot();
+      await state.tailer.prime(paths);
+      if (generation !== this.generation || this.sources.get(state.source) !== state) return;
+      state.knownPaths = pathSet;
       return;
     }
 
-    for (const previousPath of this.knownPaths) {
+    for (const previousPath of state.knownPaths) {
       if (pathSet.has(previousPath)) continue;
-      this.registry.markEndedByPath(previousPath);
-      this.tailer.forget(previousPath);
+      this.registry.markEndedByPath(previousPath, state.source);
+      state.tailer.forget(previousPath);
+      if (state.source === 'codex') this.codexParser.forget(previousPath);
     }
 
-    const appended = await this.tailer.poll(paths);
-    if (generation !== this.generation || root !== this.root) return;
-    for (const resetPath of this.tailer.takeResetPaths()) {
-      this.registry.markEndedByPath(resetPath);
+    const appended = await state.tailer.poll(paths);
+    if (generation !== this.generation || this.sources.get(state.source) !== state) return;
+    for (const resetPath of state.tailer.takeResetPaths()) {
+      this.registry.markEndedByPath(resetPath, state.source);
+      if (state.source === 'codex') this.codexParser.forget(resetPath);
     }
-    this.knownPaths = pathSet;
+    state.knownPaths = pathSet;
 
     for (const item of appended) {
-      const record = parseTranscriptLine(item.line);
+      const record =
+        state.source === 'codex'
+          ? this.codexParser.parse(item.path, item.line)
+          : parseTranscriptLine(item.line);
       if (!record) continue;
-      const targetId = this.registry.ingest(item.path, record);
+      const targetId = this.registry.ingest(item.path, state.source, record);
       if (this.paused) continue;
       const detection = detectAutomaticAnger(record);
       if (detection) {
         await this.emitCatharsis(targetId, 'owner-anger', detection.intensity);
       }
     }
-
-    this.lastProcessPresent = await this.processPresent();
-    if (generation !== this.generation || root !== this.root) return;
-    this.emitSnapshot();
   }
 
   private async emitCatharsis(
@@ -209,12 +302,26 @@ export class CompanionRuntime {
     ) {
       return;
     }
-    this.onCatharsis({ sessionId, trigger, intensity, evidence, ...generated });
+    this.onCatharsis({
+      sessionId,
+      trigger,
+      intensity,
+      evidence: publicEvidence(evidence),
+      ...generated,
+    });
   }
 
   private emitSnapshot(): void {
     this.onSnapshot(
       this.registry.snapshot(this.paused, this.lastProcessPresent, this.muted),
     );
+  }
+
+  private normalizeProcessPresence(
+    presence: boolean | AgentProcessPresence,
+  ): AgentProcessPresence {
+    return typeof presence === 'boolean'
+      ? { claudeCode: presence, codex: false }
+      : presence;
   }
 }
