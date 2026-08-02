@@ -20,4 +20,4 @@ Remove credentials, real transcripts, personal paths, and unrelated private data
 
 ## Security model
 
-The intended trust boundary is documented in the [README](README.md#安全和隐私边界). In particular, transcript access must remain read-only, local-first, user-approved, and isolated from the renderer.
+The intended trust boundary is documented in the [README](README.md#security-and-privacy-boundaries). In particular, transcript access must remain read-only, local-first, user-approved, and isolated from the renderer.
