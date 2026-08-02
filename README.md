@@ -49,7 +49,7 @@ npm install
 npm run dev
 ```
 
-`npm run dev` builds the web and Electron code before opening the desktop window. On first use, click `Directory` and approve the Claude Code transcript root you want to observe through the system directory picker. The watcher stays inactive until a root is approved.
+`npm run dev` builds the web and Electron code before opening the desktop window. On first use, click `目录` (`Directory`) and approve the Claude Code transcript root you want to observe through the system directory picker. The watcher stays inactive until a root is approved.
 
 Run the permission-free web demo only:
 
