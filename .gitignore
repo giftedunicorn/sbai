@@ -16,6 +16,9 @@ pnpm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+# Local documents
+*.pdf
+
 # Environment
 .env
 .env.*
