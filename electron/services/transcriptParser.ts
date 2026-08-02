@@ -181,12 +181,27 @@ function codexToolInput(value: unknown): Record<string, unknown> {
 }
 
 function codexToolOutput(value: unknown): { text: string; isError: boolean } | null {
+  if (Array.isArray(value)) {
+    const text = value
+      .filter(
+        (item): item is JsonRecord =>
+          isRecord(item) &&
+          (item.type === 'input_text' || item.type === 'output_text') &&
+          typeof item.text === 'string',
+      )
+      .map((item) => item.text as string)
+      .filter((part) => part.trim().length > 0)
+      .join('\n');
+    return codexToolOutput(text);
+  }
   if (typeof value === 'string') {
     if (value.trim().length === 0) return null;
     const exitCode = value.match(/Process exited with code\s+(-?\d+)/i)?.[1];
     return {
       text: value,
-      isError: exitCode !== undefined && Number(exitCode) !== 0,
+      isError:
+        (exitCode !== undefined && Number(exitCode) !== 0) ||
+        /^(?:Error|Failed|Failure|Invalid|Unable|Could not)\b/im.test(value),
     };
   }
   if (!isRecord(value)) return null;
@@ -272,7 +287,10 @@ export class CodexTranscriptParser {
       return { kind: 'tool-use', ...state, timestamp, toolUseId, toolName, input };
     }
 
-    if (payload.type === 'function_call_output') {
+    if (
+      payload.type === 'function_call_output' ||
+      payload.type === 'custom_tool_call_output'
+    ) {
       const toolUseId = nonEmptyString(payload.call_id) ?? nonEmptyString(payload.id);
       const output = codexToolOutput(payload.output);
       if (!toolUseId || !output) return null;

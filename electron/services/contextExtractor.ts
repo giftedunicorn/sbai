@@ -57,13 +57,22 @@ export function extractEvidence(
   for (const record of records) {
     if (record.kind === 'tool-use') {
       toolUses.set(record.toolUseId, record);
-      for (const path of editedPaths(record)) add('file-edit', path);
+      if (!/^apply_patch$/i.test(record.toolName)) {
+        for (const path of editedPaths(record)) add('file-edit', path);
+      }
       continue;
     }
 
-    if (record.kind !== 'tool-result' || !record.isError) continue;
+    if (record.kind !== 'tool-result') continue;
     const toolUse = toolUses.get(record.toolUseId);
     if (!toolUse) continue;
+
+    if (!record.isError) {
+      if (/^apply_patch$/i.test(toolUse.toolName)) {
+        for (const path of editedPaths(toolUse)) add('file-edit', path);
+      }
+      continue;
+    }
 
     const testCommand = commandFrom(toolUse);
     const resultText = boundedText(record.text);

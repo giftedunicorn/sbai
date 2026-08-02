@@ -93,6 +93,9 @@ describe('read-only companion flow', () => {
       'owner-anger',
       'manual',
     ]);
+    expect(JSON.stringify(catharsisEvents)).not.toContain('PRIVATE_FAILURE');
+    expect(JSON.stringify(catharsisEvents)).not.toContain('/work/private-project');
+    expect(JSON.stringify(catharsisEvents)).not.toContain('npm test');
 
     const settingsStore = new SettingsStore(userData);
     await settingsStore.save({

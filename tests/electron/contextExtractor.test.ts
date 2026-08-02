@@ -69,10 +69,28 @@ describe('extractEvidence', () => {
           patch:
             '*** Begin Patch\n*** Update File: src/main.ts\n*** Add File: src/new.ts\n*** End Patch',
         }),
+        toolResult('patch-1', false, 'Success. Updated two files.'),
       ]),
     ).toEqual([
       { kind: 'file-edit', value: 'src/main.ts', confidence: 'observed' },
       { kind: 'file-edit', value: 'src/new.ts', confidence: 'observed' },
+    ]);
+  });
+
+  it('does not claim a file edit when Codex apply_patch fails', () => {
+    expect(
+      extractEvidence([
+        toolUse('patch-failed', 'apply_patch', {
+          patch: '*** Begin Patch\n*** Update File: src/main.ts\n*** End Patch',
+        }),
+        toolResult('patch-failed', true, 'Error: patch could not be applied'),
+      ]),
+    ).toEqual([
+      {
+        kind: 'tool-failure',
+        value: 'apply_patch - Error: patch could not be applied',
+        confidence: 'observed',
+      },
     ]);
   });
 

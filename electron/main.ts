@@ -141,10 +141,7 @@ function registerIpc(): void {
     if (approvedSource === 'codex') settings.approvedCodexRoot = approvedRoot;
     else settings.approvedClaudeRoot = approvedRoot;
     persistSettings();
-    await runtime?.start({
-      'claude-code': settings.approvedClaudeRoot,
-      codex: settings.approvedCodexRoot,
-    });
+    await runtime?.setRoot(approvedSource, approvedRoot);
     return true;
   });
 }
@@ -168,12 +165,10 @@ async function initialize(): Promise<void> {
   mainWindow.webContents.setAudioMuted(settings.muted);
   registerIpc();
 
-  if (settings.approvedClaudeRoot || settings.approvedCodexRoot) {
-    await runtime.start({
-      'claude-code': settings.approvedClaudeRoot,
-      codex: settings.approvedCodexRoot,
-    });
-  }
+  await runtime.start({
+    'claude-code': settings.approvedClaudeRoot,
+    codex: settings.approvedCodexRoot,
+  });
 }
 
 void app.whenReady().then(initialize);

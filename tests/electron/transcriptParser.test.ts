@@ -346,5 +346,46 @@ describe('CodexTranscriptParser', () => {
       toolName: 'apply_patch',
       input: { patch },
     });
+
+    expect(
+      parser.parse(
+        transcriptPath,
+        JSON.stringify({
+          type: 'response_item',
+          timestamp: '2026-08-01T12:50:01Z',
+          payload: {
+            type: 'custom_tool_call_output',
+            call_id: 'patch-1',
+            output: [{ type: 'input_text', text: 'Success. Updated one file.' }],
+          },
+        }),
+      ),
+    ).toMatchObject({
+      kind: 'tool-result',
+      toolUseId: 'patch-1',
+      isError: false,
+    });
+  });
+
+  it('marks an explicitly failed custom tool output as an error', () => {
+    const parser = new CodexTranscriptParser();
+    expect(
+      parser.parse(
+        '/approved/codex/rollout.jsonl',
+        JSON.stringify({
+          type: 'response_item',
+          timestamp: '2026-08-01T12:51:00Z',
+          payload: {
+            type: 'custom_tool_call_output',
+            call_id: 'patch-failed',
+            output: [{ type: 'input_text', text: 'Error: patch could not be applied' }],
+          },
+        }),
+      ),
+    ).toMatchObject({
+      kind: 'tool-result',
+      toolUseId: 'patch-failed',
+      isError: true,
+    });
   });
 });

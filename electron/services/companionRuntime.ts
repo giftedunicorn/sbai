@@ -4,6 +4,7 @@ import type {
   CatharsisEvent,
   CompanionSnapshot,
   TriggerKind,
+  Evidence,
 } from '../../src/shared/companion.js';
 import { extractEvidence } from './contextExtractor.js';
 import { createRoastWithFallback, type MouthpieceProvider } from './pluginHost.js';
@@ -25,6 +26,20 @@ interface SourceState {
   tailer: TranscriptTailer;
   knownPaths: Set<string>;
   rootAvailable: boolean;
+}
+
+const PUBLIC_EVIDENCE_SUMMARY: Record<Evidence['kind'], string> = {
+  'test-failure': 'Observed test failure',
+  'tool-failure': 'Observed tool failure',
+  'file-edit': 'Observed file edit',
+};
+
+function publicEvidence(evidence: readonly Evidence[]): Evidence[] {
+  return evidence.map((item) => ({
+    kind: item.kind,
+    value: PUBLIC_EVIDENCE_SUMMARY[item.kind],
+    confidence: 'observed',
+  }));
 }
 
 export interface CompanionRuntimeOptions {
@@ -111,6 +126,37 @@ export class CompanionRuntime {
         void this.tick().catch(() => undefined);
       }, this.intervalMs);
     }
+  }
+
+  async setRoot(source: AgentSource, root: string | null): Promise<void> {
+    if (this.activeTick) await this.activeTick;
+    const generation = this.generation;
+    const previous = this.sources.get(source);
+    if (previous) {
+      for (const path of previous.knownPaths) {
+        this.registry.markEndedByPath(path, source);
+        if (source === 'codex') this.codexParser.forget(path);
+      }
+      previous.tailer.clear();
+      this.sources.delete(source);
+    }
+
+    if (root) {
+      const state: SourceState = {
+        source,
+        root,
+        tailer:
+          source === 'claude-code' && this.initialClaudeTailer
+            ? this.initialClaudeTailer
+            : new TranscriptTailer(),
+        knownPaths: new Set(),
+        rootAvailable: false,
+      };
+      this.sources.set(source, state);
+      await this.initializeSource(state, generation);
+      if (generation !== this.generation) return;
+    }
+    this.emitSnapshot();
   }
 
   async tick(): Promise<void> {
@@ -256,7 +302,13 @@ export class CompanionRuntime {
     ) {
       return;
     }
-    this.onCatharsis({ sessionId, trigger, intensity, evidence, ...generated });
+    this.onCatharsis({
+      sessionId,
+      trigger,
+      intensity,
+      evidence: publicEvidence(evidence),
+      ...generated,
+    });
   }
 
   private emitSnapshot(): void {
