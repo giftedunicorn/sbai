@@ -1,4 +1,4 @@
-# 嘴替.EXE (Mouthpiece.EXE)
+# Mouthpiece.EXE
 
 [![CI](https://github.com/giftedunicorn/sbai/actions/workflows/ci.yml/badge.svg)](https://github.com/giftedunicorn/sbai/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/github/license/giftedunicorn/sbai)](LICENSE)
