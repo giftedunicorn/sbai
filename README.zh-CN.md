@@ -91,11 +91,6 @@ npm run build
 - Renderer: DOM 会话列表、固定复古窗口和 Phaser 像素舞台。
 - Shared contracts: 快照、证据和出气事件的运行时验证。
 
-详细设计：
-
-- [AI Agent Companion V1 Design](docs/superpowers/specs/2026-08-01-ai-agent-companion-v1-design.md)
-- [AI Agent Companion V1 Implementation Plan](docs/superpowers/plans/2026-08-01-ai-agent-companion-v1-implementation.md)
-
 ## 参与贡献
 
 欢迎提交聚焦、可验证的小改动。开始前请阅读 [贡献指南](CONTRIBUTING.md) 和 [行为准则](CODE_OF_CONDUCT.md)。安全或隐私问题请按照 [安全策略](SECURITY.md) 私下报告，不要发布真实 transcript、路径、命令或凭据。

@@ -91,11 +91,6 @@ Build output is written to `dist/` and `dist-electron/`. Neither directory is co
 - **Renderer:** DOM session list, fixed retro window, and Phaser pixel stage.
 - **Shared contracts:** runtime validation for snapshots, evidence, and catharsis events.
 
-Detailed design:
-
-- [AI Agent Companion V1 Design](docs/superpowers/specs/2026-08-01-ai-agent-companion-v1-design.md)
-- [AI Agent Companion V1 Implementation Plan](docs/superpowers/plans/2026-08-01-ai-agent-companion-v1-implementation.md)
-
 ## Contributing
 
 Focused, verifiable contributions are welcome. Read the [contribution guide](CONTRIBUTING.md) and [Code of Conduct](CODE_OF_CONDUCT.md) before starting. Report security or privacy problems privately under the [security policy](SECURITY.md), and never publish real transcripts, paths, commands, or credentials.
